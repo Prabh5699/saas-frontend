@@ -1,26 +1,146 @@
 @import "tailwindcss";
 
-:root {
-  --background: #ffffff;
+/* Design tokens — use with Tailwind: bg-background, text-foreground, border-border, etc. */
+:root,
+[data-theme="light"] {
+  --background: #fafafa;
   --foreground: #171717;
+  --card: #ffffff;
+  --card-foreground: #171717;
+  --primary: #7c3aed;
+  --primary-foreground: #fafafa;
+  --secondary: #0ea5e9;
+  --secondary-foreground: #fafafa;
+  --muted: #f4f4f5;
+  --muted-foreground: #71717a;
+  --border: #e4e4e7;
+  --ring: #a78bfa;
+}
+
+[data-theme="dark"] {
+  --background: #030206;
+  --foreground: #fafafa;
+  --card: #09090b;
+  --card-foreground: #fafafa;
+  --primary: #8b5cf6;
+  --primary-foreground: #fafafa;
+  --secondary: #22d3ee;
+  --secondary-foreground: #030206;
+  --muted: #27272a;
+  --muted-foreground: #a1a1aa;
+  --border: rgb(255 255 255 / 0.1);
+  --ring: #8b5cf6;
 }
 
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-border: var(--border);
+  --color-ring: var(--ring);
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
 }
 
 body {
   background: var(--background);
   color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif;
+}
+
+@keyframes aurora-shift {
+  0%,
+  100% {
+    transform: translate(0%, 0%) scale(1);
+    opacity: 0.45;
+  }
+  33% {
+    transform: translate(8%, -6%) scale(1.08);
+    opacity: 0.55;
+  }
+  66% {
+    transform: translate(-6%, 5%) scale(0.98);
+    opacity: 0.5;
+  }
+}
+
+@keyframes float-soft {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-8px);
+  }
+}
+
+@keyframes login-rise {
+  from {
+    opacity: 0;
+    transform: translateY(16px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes border-shimmer {
+  0%,
+  100% {
+    background-position: 0% 50%;
+  }
+  50% {
+    background-position: 100% 50%;
+  }
+}
+
+@keyframes pulse-ring {
+  0%,
+  100% {
+    opacity: 0.35;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.55;
+    transform: scale(1.02);
+  }
+}
+
+@keyframes spin-slow {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.animate-login-rise {
+  animation: login-rise 0.85s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.animate-login-rise-delay-1 {
+  animation: login-rise 0.85s cubic-bezier(0.22, 1, 0.36, 1) 0.08s both;
+}
+
+.animate-login-rise-delay-2 {
+  animation: login-rise 0.85s cubic-bezier(0.22, 1, 0.36, 1) 0.16s both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-login-rise,
+  .animate-login-rise-delay-1,
+  .animate-login-rise-delay-2 {
+    animation: none;
+    opacity: 1;
+    transform: none;
+  }
 }
