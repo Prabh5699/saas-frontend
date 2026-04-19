@@ -207,7 +207,13 @@ export default function Dashboard() {
               </h1>
             </div>
           </div>
-          <div className="flex items-center gap-3">
+          <div className="flex flex-wrap items-center gap-3">
+            <Link
+              href="/images"
+              className="rounded-xl border border-white/10 bg-white/[0.04] px-4 py-2 text-sm font-medium text-zinc-300 backdrop-blur-sm transition hover:border-white/15 hover:bg-white/[0.07] hover:text-white"
+            >
+              Image Studio
+            </Link>
             <Link
               href="/login"
               className="rounded-xl border border-white/10 bg-white/[0.04] px-4 py-2 text-sm font-medium text-zinc-300 backdrop-blur-sm transition hover:border-white/15 hover:bg-white/[0.07] hover:text-white"

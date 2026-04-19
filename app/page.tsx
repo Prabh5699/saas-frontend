@@ -60,7 +60,7 @@ export default function Home() {
             headache.
           </p>
 
-          <div className="mt-12 flex flex-col items-stretch gap-3 sm:flex-row sm:justify-center sm:gap-4">
+          <div className="mt-12 flex flex-col items-stretch gap-3 sm:flex-row sm:flex-wrap sm:justify-center sm:gap-4">
             <Link
               href="/login"
               className={cn(
@@ -86,6 +86,15 @@ export default function Home() {
               )}
             >
               Open studio
+            </Link>
+            <Link
+              href="/images"
+              className={cn(
+                buttonVariants({ variant: "outline", size: "lg", shine: false }),
+                "rounded-2xl border-white/12 bg-white/[0.04] text-zinc-200 backdrop-blur-sm hover:border-white/18 hover:bg-white/[0.08] hover:text-white"
+              )}
+            >
+              Image Studio
             </Link>
           </div>
 

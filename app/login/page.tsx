@@ -88,10 +88,46 @@ function ArrowRightIcon({ className }: { className?: string }) {
   );
 }
 
+function EyeIcon({ className }: { className?: string }) {
+  return (
+    <svg
+      className={className}
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.5"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden
+    >
+      <path d="M2.036 12.322a1.012 1.012 0 0 1 0-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178Z" />
+      <path d="M15 12a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z" />
+    </svg>
+  );
+}
+
+function EyeSlashIcon({ className }: { className?: string }) {
+  return (
+    <svg
+      className={className}
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.5"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden
+    >
+      <path d="M3.98 8.223A10.477 10.477 0 0 0 1.934 12C3.226 16.338 7.244 19.5 12 19.5c.993 0 1.953-.138 2.863-.395M6.228 6.228A10.451 10.451 0 0 1 12 4.5c4.756 0 8.773 3.162 10.065 7.498a10.522 10.522 0 0 1-4.293 5.274M6.228 6.228 3 3m3.228 3.228 3.65 3.65m7.894 7.894L21 21M12 12h.01" />
+    </svg>
+  );
+}
+
 export default function LoginPage() {
   const router = useRouter();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -119,9 +155,17 @@ export default function LoginPage() {
         return;
       }
       persistAuthSession(data);
-      router.replace("/dashboard");
-    } catch {
-      setError("Could not reach the server. Is it running?");
+      router.push("/dashboard");
+    } catch (err) {
+      if (
+        err instanceof Error &&
+        (err.message === "No token returned from backend" ||
+          err.message.startsWith("Could not save session"))
+      ) {
+        setError(err.message);
+      } else {
+        setError("Could not reach the server. Is it running?");
+      }
     } finally {
       setLoading(false);
     }
@@ -324,14 +368,28 @@ export default function LoginPage() {
                         <input
                           id="password"
                           name="password"
-                          type="password"
+                          type={showPassword ? "text" : "password"}
                           autoComplete="current-password"
                           required
                           placeholder="••••••••"
-                          className="w-full rounded-xl border border-white/[0.09] bg-zinc-900/50 py-3 pl-11 pr-3 text-sm text-zinc-100 outline-none transition placeholder:text-zinc-600 focus:border-violet-500/45 focus:bg-zinc-900/70 focus:shadow-[0_0_0_3px_rgb(139_92_246/0.12)]"
+                          className="w-full rounded-xl border border-white/[0.09] bg-zinc-900/50 py-3 pl-11 pr-11 text-sm text-zinc-100 outline-none transition placeholder:text-zinc-600 focus:border-violet-500/45 focus:bg-zinc-900/70 focus:shadow-[0_0_0_3px_rgb(139_92_246/0.12)]"
                           value={password}
                           onChange={(e) => setPassword(e.target.value)}
                         />
+                        <button
+                          type="button"
+                          onClick={() => setShowPassword((v) => !v)}
+                          className="absolute right-2 top-1/2 flex h-8 w-8 -translate-y-1/2 items-center justify-center rounded-lg text-zinc-500 transition hover:bg-white/[0.06] hover:text-violet-400 focus:outline-none focus-visible:ring-2 focus-visible:ring-violet-500/50"
+                          aria-label={
+                            showPassword ? "Hide password" : "Show password"
+                          }
+                        >
+                          {showPassword ? (
+                            <EyeSlashIcon className="h-[18px] w-[18px]" />
+                          ) : (
+                            <EyeIcon className="h-[18px] w-[18px]" />
+                          )}
+                        </button>
                       </div>
                     </div>
 

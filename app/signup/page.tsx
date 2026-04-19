@@ -139,9 +139,17 @@ export default function SignupPage() {
         return;
       }
       persistAuthSession(data);
-      router.replace("/dashboard");
-    } catch {
-      setError("Could not reach the server. Is it running?");
+      router.push("/dashboard");
+    } catch (err) {
+      if (
+        err instanceof Error &&
+        (err.message === "No token returned from backend" ||
+          err.message.startsWith("Could not save session"))
+      ) {
+        setError(err.message);
+      } else {
+        setError("Could not reach the server. Is it running?");
+      }
     } finally {
       setLoading(false);
     }
