@@ -43,22 +43,6 @@ function LockIcon({ className }: { className?: string }) {
   );
 }
 
-function UserIcon({ className }: { className?: string }) {
-  return (
-    <svg
-      className={className}
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="1.5"
-      aria-hidden
-    >
-      <circle cx="12" cy="8" r="4" />
-      <path d="M4 20v-1a6 6 0 0 1 6-6h4a6 6 0 0 1 6 6v1" />
-    </svg>
-  );
-}
-
 function SparklesIcon({ className }: { className?: string }) {
   return (
     <svg
@@ -89,8 +73,6 @@ function ArrowRightIcon({ className }: { className?: string }) {
 
 export default function SignupPage() {
   const {
-    name,
-    setName,
     email,
     setEmail,
     password,
@@ -206,31 +188,6 @@ export default function SignupPage() {
                   </div>
 
                   <form className="space-y-4" onSubmit={handleSignup} noValidate>
-                    <div className="space-y-2">
-                      <label
-                        htmlFor="name"
-                        className="block text-[11px] font-semibold uppercase tracking-[0.18em] text-zinc-500"
-                      >
-                        Name{" "}
-                        <span className="font-normal normal-case tracking-normal text-zinc-600">
-                          (optional)
-                        </span>
-                      </label>
-                      <div className="group relative">
-                        <UserIcon className="pointer-events-none absolute left-3.5 top-1/2 h-[18px] w-[18px] -translate-y-1/2 text-zinc-500 transition group-focus-within:text-violet-400" />
-                        <input
-                          id="name"
-                          name="name"
-                          type="text"
-                          autoComplete="name"
-                          placeholder="Jane Creator"
-                          className="w-full rounded-xl border border-white/[0.09] bg-zinc-900/50 py-3 pl-11 pr-3 text-sm text-zinc-100 outline-none transition placeholder:text-zinc-600 focus:border-violet-500/45 focus:bg-zinc-900/70 focus:shadow-[0_0_0_3px_rgb(139_92_246/0.12)]"
-                          value={name}
-                          onChange={(e) => setName(e.target.value)}
-                        />
-                      </div>
-                    </div>
-
                     <div className="space-y-2">
                       <label
                         htmlFor="email"

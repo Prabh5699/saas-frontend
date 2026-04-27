@@ -6,7 +6,6 @@ import { signUp } from "../api";
 
 export function useSignupForm() {
   const router = useRouter();
-  const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
@@ -27,11 +26,9 @@ export function useSignupForm() {
 
     setLoading(true);
     try {
-      const trimmedName = name.trim();
       const body = {
         email: email.trim(),
         password,
-        ...(trimmedName ? { name: trimmedName } : {}),
       };
 
       const { data } = await signUp(body);
@@ -49,8 +46,6 @@ export function useSignupForm() {
   };
 
   return {
-    name,
-    setName,
     email,
     setEmail,
     password,
