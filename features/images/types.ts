@@ -26,4 +26,7 @@ export type ImagesProjectResponse = {
   scenes: SceneImage[];
   progress: number | null;
   totalCost: number | null;
+  videoUrl: string | null;
+  videoStatus: string | null;
+  videoError: string | null;
 };

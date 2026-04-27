@@ -14,6 +14,7 @@ import {
   generateImages,
   getImageProject,
   listImageProjects,
+  renderVideoFromImages,
   searchImageProjects,
   setImageProjectFavorite,
 } from "../api";
@@ -21,6 +22,7 @@ import type { ImageProject, SceneImage } from "../types";
 import {
   downloadImage,
   extractProjectId,
+  getProjectPayload,
   historyCreatedTime,
   historyProjectId,
   historyProjectIsFavorite,
@@ -29,10 +31,25 @@ import {
   mergeScenes,
   normalizeImageUrl,
   parseImagesProjectResponse,
-  readProgress,
-  readTotalCost,
-  scenesFromPayload,
 } from "../utils";
+
+function projectStatusFailure(
+  data: unknown
+):
+  | { fail: true; message: string }
+  | { fail: false } {
+  const inner = getProjectPayload(data);
+  if (!inner) return { fail: false };
+  const st = String(inner.status ?? "").toLowerCase();
+  if (st === "failed" || st === "error" || st === "cancelled") {
+    return {
+      fail: true,
+      message:
+        typeof inner.message === "string" ? inner.message : "Image generation failed.",
+    };
+  }
+  return { fail: false };
+}
 
 function authHeaders(): Record<string, string> {
   const token =
@@ -60,6 +77,12 @@ export function useImagesStudio() {
   const [error, setError] = useState<string | null>(null);
   const [projectFailed, setProjectFailed] = useState(false);
   const [totalCost, setTotalCost] = useState<number | null>(null);
+  const [videoUrl, setVideoUrl] = useState<string | null>(null);
+  const [videoStatus, setVideoStatus] = useState<string | null>(null);
+  const [videoError, setVideoError] = useState<string | null>(null);
+  const [videoRenderLoading, setVideoRenderLoading] = useState(false);
+  /** Slideshow total length; sent as `videoDurationSeconds` (1–86400) to render API. */
+  const [slideshowVideoDuration, setSlideshowVideoDuration] = useState(60);
   const [previewScene, setPreviewScene] = useState<number | null>(null);
   const [history, setHistory] = useState<ImageProject[]>([]);
   const [historySearch, setHistorySearch] = useState("");
@@ -105,6 +128,11 @@ export function useImagesStudio() {
     setProjectId(null);
     setProgress(0);
     setTotalCost(null);
+    setVideoUrl(null);
+    setVideoStatus(null);
+    setVideoError(null);
+    setVideoRenderLoading(false);
+    setSlideshowVideoDuration(60);
     setProjectFailed(false);
     setError(null);
     prevUrlCountRef.current = 0;
@@ -165,6 +193,11 @@ export function useImagesStudio() {
     }
     setProjectId(id);
     setImages([]);
+    setVideoUrl(null);
+    setVideoStatus(null);
+    setVideoError(null);
+    setVideoRenderLoading(false);
+    setSlideshowVideoDuration(60);
   }, []);
 
   const toggleHistoryFavorite = useCallback(
@@ -235,6 +268,11 @@ export function useImagesStudio() {
           setImages([]);
           setProgress(0);
           setTotalCost(null);
+          setVideoUrl(null);
+          setVideoStatus(null);
+          setVideoError(null);
+          setVideoRenderLoading(false);
+          setSlideshowVideoDuration(60);
           setProjectFailed(false);
           setPreviewScene(null);
           prevUrlCountRef.current = 0;
@@ -281,26 +319,18 @@ export function useImagesStudio() {
 
         if (!res.ok || !data) return;
 
-        if (typeof data === "object" && data !== null) {
-          const st = String(
-            (data as Record<string, unknown>).status ?? ""
-          ).toLowerCase();
-          if (st === "failed" || st === "error" || st === "cancelled") {
-            setError(
-              typeof (data as Record<string, unknown>).message === "string"
-                ? String((data as Record<string, unknown>).message)
-                : "Image generation failed."
-            );
-            setLoading(false);
-            setProjectFailed(true);
-            disconnectSocket();
-            try {
-              localStorage.removeItem(LAST_IMAGE_PROJECT_KEY);
-            } catch {
-              /* ignore */
-            }
-            return;
+        const failed = projectStatusFailure(data);
+        if (failed.fail) {
+          setError(failed.message);
+          setLoading(false);
+          setProjectFailed(true);
+          disconnectSocket();
+          try {
+            localStorage.removeItem(LAST_IMAGE_PROJECT_KEY);
+          } catch {
+            /* ignore */
           }
+          return;
         }
 
         const parsed = parseImagesProjectResponse(data);
@@ -321,6 +351,10 @@ export function useImagesStudio() {
         }
         if (prog != null) setProgress(Math.min(100, Math.max(0, prog)));
         if (parsed.totalCost != null) setTotalCost(parsed.totalCost);
+
+        setVideoUrl(parsed.videoUrl);
+        setVideoStatus(parsed.videoStatus);
+        setVideoError(parsed.videoError);
 
         if (
           parsed.scenes.length > 0 &&
@@ -461,11 +495,19 @@ export function useImagesStudio() {
     }
   }, [projectId, sceneCount, images, progress, projectFailed]);
 
+  const shouldPollProject = useMemo(() => {
+    if (!projectId || projectFailed) return false;
+    if (progress < 100) return true;
+    const v = (videoStatus ?? "").toLowerCase();
+    return v === "queued" || v === "processing";
+  }, [projectId, projectFailed, progress, videoStatus]);
+
   useEffect(() => {
-    if (!projectId || projectFailed) return;
+    if (!shouldPollProject || !projectId) return;
 
     let intervalId: ReturnType<typeof setInterval> | undefined;
     let stopped = false;
+    const id = projectId;
 
     const clearPollInterval = () => {
       if (intervalId !== undefined) {
@@ -474,49 +516,67 @@ export function useImagesStudio() {
       }
     };
 
-    let latestProgressFromPoll: number | null = null;
-
     const pollOnce = async () => {
-      if (stopped || progressRef.current >= 100) {
-        clearPollInterval();
-        return;
-      }
+      if (stopped) return;
       try {
         const { res, data } = await getImageProject({
-          id: projectId,
+          id,
           headers: authHeaders(),
         });
+
+        if (res.status === 404 || res.status === 403) {
+          try {
+            localStorage.removeItem(LAST_IMAGE_PROJECT_KEY);
+          } catch {
+            /* ignore */
+          }
+          setProjectId(null);
+          setImages([]);
+          clearPollInterval();
+          return;
+        }
+
         if (!res.ok || !data) return;
 
-        if (typeof data === "object" && data !== null) {
-          const st = String(
-            (data as Record<string, unknown>).status ?? ""
-          ).toLowerCase();
-          if (st === "failed" || st === "error" || st === "cancelled") {
-            const msg =
-              typeof (data as Record<string, unknown>).message === "string"
-                ? String((data as Record<string, unknown>).message)
-                : "Image generation failed.";
-            setError(msg);
-            setLoading(false);
-            setProjectFailed(true);
-            disconnectSocket();
-            clearPollInterval();
-            return;
-          }
+        const fail = projectStatusFailure(data);
+        if (fail.fail) {
+          setError(fail.message);
+          setLoading(false);
+          setProjectFailed(true);
+          disconnectSocket();
+          clearPollInterval();
+          return;
         }
 
-        const cost = readTotalCost(data);
-        if (cost != null) setTotalCost(cost);
-        const p = readProgress(data);
-        if (p != null) {
-          latestProgressFromPoll = p;
-          setProgress(p);
-          if (p >= 100) clearPollInterval();
+        const parsed = parseImagesProjectResponse(data);
+        if (!parsed) return;
+
+        setImages((prev) => {
+          if (parsed.scenes.length === 0) return prev;
+          if (prev.length === 0) return parsed.scenes;
+          return mergeScenes(prev, parsed.scenes);
+        });
+
+        let prog = parsed.progress;
+        if (
+          parsed.scenes.length > 0 &&
+          parsed.scenes.every((s) => Boolean(s.imageUrl))
+        ) {
+          prog = 100;
         }
-        const scenes = scenesFromPayload(data);
-        if (scenes.length > 0) {
-          setImages((prev) => mergeScenes(prev, scenes));
+        if (prog != null) setProgress(Math.min(100, Math.max(0, prog)));
+        if (parsed.totalCost != null) setTotalCost(parsed.totalCost);
+
+        setVideoUrl(parsed.videoUrl);
+        setVideoStatus(parsed.videoStatus);
+        setVideoError(parsed.videoError);
+
+        if (
+          parsed.scenes.length > 0 &&
+          parsed.scenes.every((s) => Boolean(s.imageUrl))
+        ) {
+          setProgress(100);
+          setLoading(false);
         }
       } catch (err) {
         const msg = getApiErrorMessage(err, "");
@@ -526,12 +586,7 @@ export function useImagesStudio() {
 
     void (async () => {
       await pollOnce();
-      if (
-        stopped ||
-        (latestProgressFromPoll != null && latestProgressFromPoll >= 100)
-      ) {
-        return;
-      }
+      if (stopped) return;
       intervalId = setInterval(() => void pollOnce(), 3000);
     })();
 
@@ -539,7 +594,7 @@ export function useImagesStudio() {
       stopped = true;
       clearPollInterval();
     };
-  }, [projectId, projectFailed, disconnectSocket]);
+  }, [shouldPollProject, projectId, disconnectSocket]);
 
   const sortedImages = useMemo(() => {
     return [...images].sort((a, b) => a.scene_number - b.scene_number);
@@ -626,6 +681,11 @@ export function useImagesStudio() {
     setImages([]);
     setProgress(0);
     setTotalCost(null);
+    setVideoUrl(null);
+    setVideoStatus(null);
+    setVideoError(null);
+    setVideoRenderLoading(false);
+    setSlideshowVideoDuration(60);
     prevUrlCountRef.current = 0;
 
     try {
@@ -664,6 +724,66 @@ export function useImagesStudio() {
     }
   }, [disconnectSocket, fetchHistory, prompt, sceneCount]);
 
+  const canCreateSlideshow = useMemo(() => {
+    if (!projectId || projectFailed) return false;
+    if (progress < 100) return false;
+    if (!images.some((i) => Boolean(i.imageUrl))) return false;
+    const v = (videoStatus ?? "").toLowerCase();
+    if (v === "queued" || v === "processing") return false;
+    if (videoUrl) return false;
+    if (videoRenderLoading) return false;
+    return true;
+  }, [
+    projectId,
+    projectFailed,
+    progress,
+    images,
+    videoStatus,
+    videoUrl,
+    videoRenderLoading,
+  ]);
+
+  const handleCreateSlideshowVideo = useCallback(async () => {
+    if (!projectId) return;
+    setError(null);
+    setVideoRenderLoading(true);
+    setVideoError(null);
+    try {
+      const { res, data } = await renderVideoFromImages({
+        projectId,
+        body: {},
+        headers: authHeaders(),
+      });
+      if (res.status === 409) {
+        const msg =
+          data &&
+          typeof data === "object" &&
+          "message" in data &&
+          typeof (data as { message: unknown }).message === "string"
+            ? String((data as { message: string }).message)
+            : "A video is already being rendered for this project.";
+        setError(msg);
+        return;
+      }
+      if (!res.ok) {
+        const msg =
+          data &&
+          typeof data === "object" &&
+          "message" in data &&
+          typeof (data as { message: unknown }).message === "string"
+            ? String((data as { message: string }).message)
+            : "Could not start video render.";
+        setError(msg);
+        return;
+      }
+      setVideoStatus("queued");
+    } catch (err) {
+      setError(getApiErrorMessage(err, "Could not start video render."));
+    } finally {
+      setVideoRenderLoading(false);
+    }
+  }, [projectId, slideshowVideoDuration]);
+
   const showLoader = Boolean(
     loading || (projectId !== null && progress < 100 && !projectFailed)
   );
@@ -691,6 +811,14 @@ export function useImagesStudio() {
     setError,
     projectFailed,
     totalCost,
+    videoUrl,
+    videoStatus,
+    videoError,
+    videoRenderLoading,
+    canCreateSlideshow,
+    slideshowVideoDuration,
+    setSlideshowVideoDuration,
+    handleCreateSlideshowVideo,
     previewScene,
     history,
     historySearch,

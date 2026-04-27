@@ -108,3 +108,31 @@ export async function generateImages({
     }),
   });
 }
+
+export type RenderVideoFromImagesBody = {
+  videoDurationSeconds?: number;
+  includeNarration?: boolean;
+  voiceId?: string;
+  includeMusic?: boolean;
+};
+
+/** Slideshow video from a completed image project. POST returns `{ success: true }`; poll GET /api/images/:id for videoStatus / videoUrl. */
+export async function renderVideoFromImages({
+  projectId,
+  body,
+  headers,
+}: {
+  projectId: string;
+  body?: RenderVideoFromImagesBody;
+  headers: Record<string, string>;
+}) {
+  return apiFetch(
+    `/api/images/${projectId}/render-video`,
+    {
+      method: "POST",
+      headers: { ...headers },
+      body: JSON.stringify(body ?? {}),
+    },
+    { throwOnError: false }
+  );
+}

@@ -7,6 +7,21 @@ import type {
 
 export const LAST_IMAGE_PROJECT_KEY = "last_image_project_id";
 
+/** Nest `{ success: true, data: { ... } }` → inner project object; else root. */
+export function getProjectPayload(data: unknown): Record<string, unknown> | null {
+  if (!data || typeof data !== "object") return null;
+  const root = data as Record<string, unknown>;
+  if (
+    root.success === true &&
+    root.data !== undefined &&
+    typeof root.data === "object" &&
+    root.data !== null
+  ) {
+    return root.data as Record<string, unknown>;
+  }
+  return root;
+}
+
 export function extractProjectId(data: unknown): string | null {
   if (!data || typeof data !== "object") return null;
   const d = data as Record<string, unknown>;
@@ -146,7 +161,25 @@ export function parseImagesProjectResponse(
   const totalCost =
     readTotalCost(raw) ?? (project ? readTotalCost(project) : null);
 
-  return { scenes, progress, totalCost };
+  const videoSource =
+    project ??
+    (root.data && typeof root.data === "object" && root.data !== null
+      ? (root.data as Record<string, unknown>)
+      : null);
+
+  let videoUrl: string | null = null;
+  let videoStatus: string | null = null;
+  let videoError: string | null = null;
+  if (videoSource) {
+    const u = videoSource.videoUrl ?? videoSource.video_url;
+    videoUrl = normalizeImageUrl(u) ?? (typeof u === "string" ? u : null);
+    const vs = videoSource.videoStatus ?? videoSource.video_status;
+    videoStatus = typeof vs === "string" ? vs : null;
+    const ve = videoSource.videoError ?? videoSource.video_error;
+    videoError = typeof ve === "string" ? ve : null;
+  }
+
+  return { scenes, progress, totalCost, videoUrl, videoStatus, videoError };
 }
 
 export function isCompletedStatus(status: string | undefined): boolean {

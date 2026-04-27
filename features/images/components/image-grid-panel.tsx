@@ -14,6 +14,14 @@ type ImageGridPanelProps = Pick<
   | "scrollAreaRef"
   | "handleDownloadAll"
   | "setPreviewScene"
+  | "videoUrl"
+  | "videoStatus"
+  | "videoError"
+  | "videoRenderLoading"
+  | "canCreateSlideshow"
+  | "slideshowVideoDuration"
+  | "setSlideshowVideoDuration"
+  | "handleCreateSlideshowVideo"
 >;
 
 export function ImageGridPanel({
@@ -26,8 +34,19 @@ export function ImageGridPanel({
   scrollAreaRef,
   handleDownloadAll,
   setPreviewScene,
+  videoUrl,
+  videoStatus,
+  videoError,
+  videoRenderLoading,
+  canCreateSlideshow,
+  slideshowVideoDuration,
+  setSlideshowVideoDuration,
+  handleCreateSlideshowVideo,
 }: ImageGridPanelProps) {
   const hasImages = sortedImages.some((i) => Boolean(i.imageUrl));
+  const videoBusy =
+    (videoStatus ?? "").toLowerCase() === "queued" ||
+    (videoStatus ?? "").toLowerCase() === "processing";
 
   return (
     <div className="relative flex min-h-[320px] flex-col lg:min-h-[480px] lg:sticky lg:top-6 lg:self-start">
@@ -66,6 +85,64 @@ export function ImageGridPanel({
             ) : null}
           </div>
         </div>
+
+        {projectId !== null && progress >= 100 && !projectFailed ? (
+          <div className="border-b border-white/[0.06] px-4 py-3 sm:px-5">
+            {videoUrl ? (
+              <div className="space-y-2">
+                <p className="text-xs font-medium uppercase tracking-wider text-zinc-500">
+                  Slideshow video
+                </p>
+                <video
+                  controls
+                  className="max-h-[min(50vh,360px)] w-full rounded-lg border border-white/[0.08] bg-black/40"
+                  src={videoUrl}
+                />
+              </div>
+            ) : null}
+
+            {videoError && !videoUrl ? (
+              <p className="text-sm text-red-400/90" role="alert">
+                {videoError}
+              </p>
+            ) : null}
+
+            {videoBusy && !videoUrl ? (
+              <p className="text-sm text-zinc-400">Rendering video…</p>
+            ) : null}
+
+            {canCreateSlideshow ? (
+              <div className={videoUrl || videoError || videoBusy ? "mt-3" : ""}>
+                <label className="mb-2 block text-xs font-medium text-zinc-400">
+                  Video length (seconds)
+                  <input
+                    type="number"
+                    min={1}
+                    max={86400}
+                    value={slideshowVideoDuration}
+                    onChange={(e) => {
+                      const v = e.target.value;
+                      if (v === "") return;
+                      const n = parseInt(v, 10);
+                      if (Number.isNaN(n)) return;
+                      setSlideshowVideoDuration(Math.min(86400, Math.max(1, n)));
+                    }}
+                    className="mt-1.5 block w-full max-w-[180px] rounded-lg border border-white/[0.12] bg-zinc-950/80 px-3 py-2 text-sm text-zinc-100 outline-none transition focus:border-violet-500/40 focus:ring-1 focus:ring-violet-500/30"
+                  />
+                </label>
+                <p className="mb-3 text-[11px] text-zinc-500">1–86,400 seconds (API limit).</p>
+                <button
+                  type="button"
+                  onClick={() => void handleCreateSlideshowVideo()}
+                  disabled={videoRenderLoading}
+                  className="rounded-lg border border-violet-500/30 bg-violet-500/15 px-3 py-2 text-xs font-medium text-violet-100 transition hover:border-violet-500/50 hover:bg-violet-500/25 focus:outline-none focus-visible:ring-2 focus-visible:ring-violet-500/50 disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                  {videoRenderLoading ? "Starting…" : "Create video from these images"}
+                </button>
+              </div>
+            ) : null}
+          </div>
+        ) : null}
 
         <div
           ref={scrollAreaRef}
