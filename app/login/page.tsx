@@ -1,11 +1,9 @@
 "use client";
 
-import { persistAuthSession } from "@/lib/auth-session";
+import { useLoginForm } from "@/features/auth/hooks/use-login-form";
 import { CinematicBackdrop } from "@/components/layout/cinematic-backdrop";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
-import { useState } from "react";
 
 function MailIcon({ className }: { className?: string }) {
   return (
@@ -124,52 +122,17 @@ function EyeSlashIcon({ className }: { className?: string }) {
 }
 
 export default function LoginPage() {
-  const router = useRouter();
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const [showPassword, setShowPassword] = useState(false);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-
-  const handleLogin = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setError(null);
-    setLoading(true);
-
-    try {
-      const res = await fetch("http://localhost:3001/api/auth/signin", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ email, password }),
-      });
-
-      const data = await res.json().catch(() => null);
-      if (!res.ok) {
-        setError(
-          typeof data?.message === "string"
-            ? data.message
-            : "Sign in failed. Check your details and try again."
-        );
-        return;
-      }
-      persistAuthSession(data);
-      router.push("/dashboard");
-    } catch (err) {
-      if (
-        err instanceof Error &&
-        (err.message === "No token returned from backend" ||
-          err.message.startsWith("Could not save session"))
-      ) {
-        setError(err.message);
-      } else {
-        setError("Could not reach the server. Is it running?");
-      }
-    } finally {
-      setLoading(false);
-    }
-  };
+  const {
+    email,
+    setEmail,
+    password,
+    setPassword,
+    showPassword,
+    setShowPassword,
+    loading,
+    error,
+    handleLogin,
+  } = useLoginForm();
 
   return (
     <div className="font-sans relative min-h-screen overflow-hidden bg-background text-foreground">

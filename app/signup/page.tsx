@@ -1,13 +1,9 @@
 "use client";
 
-import { persistAuthSession } from "@/lib/auth-session";
+import { useSignupForm } from "@/features/auth/hooks/use-signup-form";
 import { CinematicBackdrop } from "@/components/layout/cinematic-backdrop";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
-import { useState } from "react";
-
-const API_BASE = "http://localhost:3001";
 
 function MailIcon({ className }: { className?: string }) {
   return (
@@ -92,68 +88,19 @@ function ArrowRightIcon({ className }: { className?: string }) {
 }
 
 export default function SignupPage() {
-  const router = useRouter();
-  const [name, setName] = useState("");
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const [confirmPassword, setConfirmPassword] = useState("");
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-
-  const handleSignup = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setError(null);
-    if (password !== confirmPassword) {
-      setError("Passwords don’t match.");
-      return;
-    }
-    if (password.length < 8) {
-      setError("Use at least 8 characters for your password.");
-      return;
-    }
-
-    setLoading(true);
-    try {
-      const body: Record<string, string> = {
-        email: email.trim(),
-        password,
-      };
-      const trimmedName = name.trim();
-      if (trimmedName) body.name = trimmedName;
-
-      const res = await fetch(`${API_BASE}/api/auth/signup`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(body),
-      });
-
-      const data = await res.json().catch(() => null);
-      if (!res.ok) {
-        setError(
-          typeof data?.message === "string"
-            ? data.message
-            : Array.isArray(data?.message)
-              ? data.message.join(", ")
-              : "Could not create account. Try a different email."
-        );
-        return;
-      }
-      persistAuthSession(data);
-      router.push("/dashboard");
-    } catch (err) {
-      if (
-        err instanceof Error &&
-        (err.message === "No token returned from backend" ||
-          err.message.startsWith("Could not save session"))
-      ) {
-        setError(err.message);
-      } else {
-        setError("Could not reach the server. Is it running?");
-      }
-    } finally {
-      setLoading(false);
-    }
-  };
+  const {
+    name,
+    setName,
+    email,
+    setEmail,
+    password,
+    setPassword,
+    confirmPassword,
+    setConfirmPassword,
+    loading,
+    error,
+    handleSignup,
+  } = useSignupForm();
 
   return (
     <div className="font-sans relative min-h-screen overflow-hidden bg-background text-foreground">

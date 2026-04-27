@@ -1,41 +1,12 @@
 "use client";
 
+import { useVideoDashboard } from "@/features/video/hooks/use-video-dashboard";
 import { CinematicBackdrop } from "@/components/layout/cinematic-backdrop";
 import { PageShell } from "@/components/layout/page-shell";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { ProgressCard } from "@/components/ui/progress-card";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
-import { useCallback, useEffect, useState } from "react";
-
-const API_BASE = "http://localhost:3001";
-
-function extractVideoUrl(data: unknown): string | null {
-  if (!data || typeof data !== "object") return null;
-  const d = data as Record<string, unknown>;
-  const keys = ["videoUrl", "url", "src", "playbackUrl", "resultUrl", "fileUrl"];
-  for (const k of keys) {
-    const v = d[k];
-    if (typeof v === "string" && (v.startsWith("http") || v.startsWith("/"))) {
-      return v.startsWith("/") ? `${API_BASE}${v}` : v;
-    }
-  }
-  if (d.data && typeof d.data === "object") {
-    return extractVideoUrl(d.data);
-  }
-  return null;
-}
-
-function extractJobId(data: unknown): string | null {
-  if (!data || typeof data !== "object") return null;
-  const d = data as Record<string, unknown>;
-  const raw = d.id ?? d._id ?? d.videoId ?? d.jobId;
-  if (typeof raw === "string") return raw;
-  if (typeof raw === "number") return String(raw);
-  if (d.data && typeof d.data === "object") return extractJobId(d.data);
-  return null;
-}
 
 function FilmIcon({ className }: { className?: string }) {
   return (
@@ -67,123 +38,19 @@ function WandIcon({ className }: { className?: string }) {
 }
 
 export default function Dashboard() {
-  const router = useRouter();
-  const [prompt, setPrompt] = useState("");
-  const [duration, setDuration] = useState(60);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [videoUrl, setVideoUrl] = useState<string | null>(null);
-  const [pendingJobId, setPendingJobId] = useState<string | null>(null);
-  const [statusHint, setStatusHint] = useState<string | null>(null);
-
-  const authHeaders = useCallback((): Record<string, string> => {
-    const token =
-      typeof window !== "undefined"
-        ? localStorage.getItem("access_token")
-        : null;
-    return token ? { Authorization: `Bearer ${token}` } : {};
-  }, []);
-
-  const handleLogout = () => {
-    try {
-      localStorage.removeItem("access_token");
-    } catch {
-      /* ignore */
-    }
-    router.replace("/login");
-  };
-
-  const handleGenerate = async () => {
-    const trimmed = prompt.trim();
-    if (!trimmed) {
-      setError("Describe your video first—what should we create?");
-      return;
-    }
-    setError(null);
-    setStatusHint(null);
-    setVideoUrl(null);
-    setPendingJobId(null);
-    setLoading(true);
-
-    try {
-      const res = await fetch(`${API_BASE}/api/video/generate`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          ...authHeaders(),
-        },
-        body: JSON.stringify({ prompt: trimmed, duration }),
-      });
-
-      const data = await res.json().catch(() => null);
-      if (!res.ok) {
-        const msg =
-          data && typeof data === "object" && "message" in data
-            ? String((data as { message: unknown }).message)
-            : "Could not start generation. Try again.";
-        setError(msg);
-        return;
-      }
-
-      const url = extractVideoUrl(data);
-      const id = extractJobId(data);
-
-      if (url) {
-        setVideoUrl(url);
-        setStatusHint("Your video is ready.");
-        return;
-      }
-
-      if (id) {
-        setPendingJobId(id);
-        setStatusHint("Rendering frames—this can take a minute.");
-        return;
-      }
-
-      setStatusHint(
-        "Generation started. Check your API response shape if the preview stays empty."
-      );
-    } catch {
-      setError("Network error. Is the API running?");
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  useEffect(() => {
-    if (!pendingJobId || videoUrl) return;
-
-    const poll = async () => {
-      try {
-        const res = await fetch(`${API_BASE}/api/video/${pendingJobId}`, {
-          headers: { ...authHeaders() },
-        });
-        const data = await res.json().catch(() => null);
-        const url = extractVideoUrl(data);
-        if (url) {
-          setVideoUrl(url);
-          setPendingJobId(null);
-          setStatusHint("Your video is ready.");
-          return;
-        }
-        if (data && typeof data === "object") {
-          const st = (data as { status?: string }).status;
-          if (st === "failed" || st === "error" || st === "cancelled") {
-            setError("Generation stopped or failed.");
-            setPendingJobId(null);
-          }
-        }
-      } catch {
-        /* keep polling */
-      }
-    };
-
-    poll();
-    const interval = setInterval(poll, 2800);
-    return () => clearInterval(interval);
-  }, [pendingJobId, videoUrl, authHeaders]);
-
-  const showLoader = Boolean(loading || (pendingJobId && !videoUrl));
+  const {
+    prompt,
+    setPrompt,
+    duration,
+    setDuration,
+    error,
+    videoUrl,
+    pendingJobId,
+    statusHint,
+    showLoader,
+    handleLogout,
+    handleGenerate,
+  } = useVideoDashboard();
 
   return (
     <div className="font-sans relative min-h-screen overflow-x-hidden bg-background text-foreground">
