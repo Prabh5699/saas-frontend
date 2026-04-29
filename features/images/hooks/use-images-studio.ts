@@ -15,9 +15,11 @@ import {
   getImageProject,
   listImageProjects,
   renderVideoFromImages,
+  type RenderVideoFromImagesBody,
   searchImageProjects,
   setImageProjectFavorite,
 } from "../api";
+import { SLIDESHOW_DEFAULT_VOICE_ID } from "../slideshow-defaults";
 import type { ImageProject, SceneImage } from "../types";
 import {
   downloadImage,
@@ -83,6 +85,11 @@ export function useImagesStudio() {
   const [videoRenderLoading, setVideoRenderLoading] = useState(false);
   /** Slideshow total length; sent as `videoDurationSeconds` (1–86400) to render API. */
   const [slideshowVideoDuration, setSlideshowVideoDuration] = useState(60);
+  const [slideshowIncludeNarration, setSlideshowIncludeNarration] = useState(true);
+  const [slideshowIncludeMusic, setSlideshowIncludeMusic] = useState(false);
+  const [slideshowVoiceId, setSlideshowVoiceId] = useState(
+    SLIDESHOW_DEFAULT_VOICE_ID
+  );
   const [previewScene, setPreviewScene] = useState<number | null>(null);
   const [history, setHistory] = useState<ImageProject[]>([]);
   const [historySearch, setHistorySearch] = useState("");
@@ -133,6 +140,9 @@ export function useImagesStudio() {
     setVideoError(null);
     setVideoRenderLoading(false);
     setSlideshowVideoDuration(60);
+    setSlideshowIncludeNarration(true);
+    setSlideshowIncludeMusic(false);
+    setSlideshowVoiceId(SLIDESHOW_DEFAULT_VOICE_ID);
     setProjectFailed(false);
     setError(null);
     prevUrlCountRef.current = 0;
@@ -198,6 +208,9 @@ export function useImagesStudio() {
     setVideoError(null);
     setVideoRenderLoading(false);
     setSlideshowVideoDuration(60);
+    setSlideshowIncludeNarration(true);
+    setSlideshowIncludeMusic(false);
+    setSlideshowVoiceId(SLIDESHOW_DEFAULT_VOICE_ID);
   }, []);
 
   const toggleHistoryFavorite = useCallback(
@@ -273,6 +286,9 @@ export function useImagesStudio() {
           setVideoError(null);
           setVideoRenderLoading(false);
           setSlideshowVideoDuration(60);
+          setSlideshowIncludeNarration(true);
+          setSlideshowIncludeMusic(false);
+          setSlideshowVoiceId(SLIDESHOW_DEFAULT_VOICE_ID);
           setProjectFailed(false);
           setPreviewScene(null);
           prevUrlCountRef.current = 0;
@@ -686,6 +702,9 @@ export function useImagesStudio() {
     setVideoError(null);
     setVideoRenderLoading(false);
     setSlideshowVideoDuration(60);
+    setSlideshowIncludeNarration(true);
+    setSlideshowIncludeMusic(false);
+    setSlideshowVoiceId(SLIDESHOW_DEFAULT_VOICE_ID);
     prevUrlCountRef.current = 0;
 
     try {
@@ -746,12 +765,27 @@ export function useImagesStudio() {
   const handleCreateSlideshowVideo = useCallback(async () => {
     if (!projectId) return;
     setError(null);
-    setVideoRenderLoading(true);
     setVideoError(null);
+    const seconds = Math.round(Number(slideshowVideoDuration));
+    if (!Number.isFinite(seconds) || seconds < 1 || seconds > 86400) {
+      setError("Video length must be between 1 and 86,400 seconds (24 hours).");
+      return;
+    }
+
+    const body: RenderVideoFromImagesBody = {
+      videoDurationSeconds: seconds,
+      includeNarration: slideshowIncludeNarration,
+      includeMusic: slideshowIncludeMusic,
+    };
+    const voice =
+      slideshowVoiceId.trim() || SLIDESHOW_DEFAULT_VOICE_ID;
+    if (voice) body.voiceId = voice;
+
+    setVideoRenderLoading(true);
     try {
       const { res, data } = await renderVideoFromImages({
         projectId,
-        body: {},
+        body,
         headers: authHeaders(),
       });
       if (res.status === 409) {
@@ -782,7 +816,13 @@ export function useImagesStudio() {
     } finally {
       setVideoRenderLoading(false);
     }
-  }, [projectId, slideshowVideoDuration]);
+  }, [
+    projectId,
+    slideshowVideoDuration,
+    slideshowIncludeNarration,
+    slideshowIncludeMusic,
+    slideshowVoiceId,
+  ]);
 
   const showLoader = Boolean(
     loading || (projectId !== null && progress < 100 && !projectFailed)
@@ -818,6 +858,12 @@ export function useImagesStudio() {
     canCreateSlideshow,
     slideshowVideoDuration,
     setSlideshowVideoDuration,
+    slideshowIncludeNarration,
+    setSlideshowIncludeNarration,
+    slideshowIncludeMusic,
+    setSlideshowIncludeMusic,
+    slideshowVoiceId,
+    setSlideshowVoiceId,
     handleCreateSlideshowVideo,
     previewScene,
     history,

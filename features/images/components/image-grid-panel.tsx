@@ -21,6 +21,12 @@ type ImageGridPanelProps = Pick<
   | "canCreateSlideshow"
   | "slideshowVideoDuration"
   | "setSlideshowVideoDuration"
+  | "slideshowIncludeNarration"
+  | "setSlideshowIncludeNarration"
+  | "slideshowIncludeMusic"
+  | "setSlideshowIncludeMusic"
+  | "slideshowVoiceId"
+  | "setSlideshowVoiceId"
   | "handleCreateSlideshowVideo"
 >;
 
@@ -41,6 +47,12 @@ export function ImageGridPanel({
   canCreateSlideshow,
   slideshowVideoDuration,
   setSlideshowVideoDuration,
+  slideshowIncludeNarration,
+  setSlideshowIncludeNarration,
+  slideshowIncludeMusic,
+  setSlideshowIncludeMusic,
+  slideshowVoiceId,
+  setSlideshowVoiceId,
   handleCreateSlideshowVideo,
 }: ImageGridPanelProps) {
   const hasImages = sortedImages.some((i) => Boolean(i.imageUrl));
@@ -130,7 +142,53 @@ export function ImageGridPanel({
                     className="mt-1.5 block w-full max-w-[180px] rounded-lg border border-white/[0.12] bg-zinc-950/80 px-3 py-2 text-sm text-zinc-100 outline-none transition focus:border-violet-500/40 focus:ring-1 focus:ring-violet-500/30"
                   />
                 </label>
-                <p className="mb-3 text-[11px] text-zinc-500">1–86,400 seconds (API limit).</p>
+                <p className="mb-3 text-[11px] text-zinc-500">
+                  Required for narrated render (1–86,400 seconds).
+                </p>
+
+                <div className="mb-3 flex flex-col gap-2.5">
+                  <label className="flex cursor-pointer items-center gap-2 text-xs text-zinc-300">
+                    <input
+                      type="checkbox"
+                      checked={slideshowIncludeNarration}
+                      onChange={(e) =>
+                        setSlideshowIncludeNarration(e.target.checked)
+                      }
+                      className="h-3.5 w-3.5 rounded border-white/20 bg-zinc-900 text-violet-500 focus:ring-violet-500/40"
+                    />
+                    Include narration
+                  </label>
+                  <label className="flex cursor-pointer items-center gap-2 text-xs text-zinc-300">
+                    <input
+                      type="checkbox"
+                      checked={slideshowIncludeMusic}
+                      onChange={(e) =>
+                        setSlideshowIncludeMusic(e.target.checked)
+                      }
+                      className="h-3.5 w-3.5 rounded border-white/20 bg-zinc-900 text-violet-500 focus:ring-violet-500/40"
+                    />
+                    Include music
+                  </label>
+                </div>
+
+                <label className="mb-3 block text-xs font-medium text-zinc-400">
+                  Voice ID
+                  <input
+                    type="text"
+                    value={slideshowVoiceId}
+                    onChange={(e) => setSlideshowVoiceId(e.target.value)}
+                    placeholder="ElevenLabs voice id…"
+                    className="mt-1.5 block w-full max-w-[280px] rounded-lg border border-white/[0.12] bg-zinc-950/80 px-3 py-2 text-sm text-zinc-100 outline-none placeholder:text-zinc-600 focus:border-violet-500/40 focus:ring-1 focus:ring-violet-500/30"
+                  />
+                  <span className="mt-1 block font-normal text-[11px] leading-snug text-zinc-500">
+                    Pre-filled from{" "}
+                    <code className="rounded bg-white/[0.06] px-1 py-0.5 text-[10px] text-zinc-400">
+                      NEXT_PUBLIC_SLIDESHOW_VOICE_ID
+                    </code>
+                    . On generate, the request uses what you typed, or that env value if the field is empty.
+                  </span>
+                </label>
+
                 <button
                   type="button"
                   onClick={() => void handleCreateSlideshowVideo()}

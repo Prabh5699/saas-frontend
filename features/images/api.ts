@@ -130,7 +130,10 @@ export async function renderVideoFromImages({
     `/api/images/${projectId}/render-video`,
     {
       method: "POST",
-      headers: { ...headers },
+      headers: {
+        ...headers,
+        "Content-Type": "application/json",
+      },
       body: JSON.stringify(body ?? {}),
     },
     { throwOnError: false }
