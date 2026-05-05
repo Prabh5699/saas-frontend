@@ -1,5 +1,5 @@
 export const API_BASE =
-  process.env.NEXT_PUBLIC_API_URL ?? "https://saas-78hi.onrender.com";
+  process.env.NEXT_PUBLIC_API_URL ?? "http://52.66.67.101";
 
 type ApiFetchConfig = {
   throwOnError?: boolean;
