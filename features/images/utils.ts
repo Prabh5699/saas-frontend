@@ -1,26 +1,22 @@
 import { API_BASE } from "@/lib/api";
+import {
+  getProjectPayload,
+  isCompletedStatus,
+  mergeStudioScenes,
+  parseLegacyImagesProjectResponse,
+  studioSceneToLegacyImage,
+} from "@/features/studio/adapters/legacy-images";
+import { LAST_PROJECT_STORAGE_KEY } from "@/features/studio/constants";
 import type {
   ImageProject,
   ImagesProjectResponse,
   SceneImage,
+  StudioScene,
 } from "./types";
 
-export const LAST_IMAGE_PROJECT_KEY = "last_image_project_id";
+export const LAST_IMAGE_PROJECT_KEY = LAST_PROJECT_STORAGE_KEY;
 
-/** Nest `{ success: true, data: { ... } }` → inner project object; else root. */
-export function getProjectPayload(data: unknown): Record<string, unknown> | null {
-  if (!data || typeof data !== "object") return null;
-  const root = data as Record<string, unknown>;
-  if (
-    root.success === true &&
-    root.data !== undefined &&
-    typeof root.data === "object" &&
-    root.data !== null
-  ) {
-    return root.data as Record<string, unknown>;
-  }
-  return root;
-}
+export { getProjectPayload, isCompletedStatus };
 
 export function extractProjectId(data: unknown): string | null {
   if (!data || typeof data !== "object") return null;
@@ -39,12 +35,6 @@ export function normalizeImageUrl(raw: unknown): string | null {
   return raw;
 }
 
-function readSceneNumber(row: Record<string, unknown>): number | null {
-  const raw = row.sceneNumber ?? row.scene_number;
-  const n = typeof raw === "number" ? raw : Number(raw);
-  return Number.isFinite(n) ? n : null;
-}
-
 export function scenesFromPayload(data: unknown): SceneImage[] {
   if (!data || typeof data !== "object") return [];
   const d = data as Record<string, unknown>;
@@ -54,8 +44,13 @@ export function scenesFromPayload(data: unknown): SceneImage[] {
   for (const item of list) {
     if (!item || typeof item !== "object") continue;
     const row = item as Record<string, unknown>;
-    const scene_number = readSceneNumber(row);
-    if (scene_number == null) continue;
+    const scene_number =
+      typeof row.sceneNumber === "number"
+        ? row.sceneNumber
+        : typeof row.scene_number === "number"
+          ? row.scene_number
+          : Number(row.scene_number ?? row.sceneNumber);
+    if (!Number.isFinite(scene_number)) continue;
     const imageUrl =
       normalizeImageUrl(row.imageUrl ?? row.image_url ?? row.url) ?? null;
     const status = typeof row.status === "string" ? row.status : undefined;
@@ -68,21 +63,21 @@ export function mergeScenes(
   prev: SceneImage[],
   incoming: SceneImage[]
 ): SceneImage[] {
-  const map = new Map<number, SceneImage>();
-  for (const img of prev) map.set(img.scene_number, { ...img });
-  for (const img of incoming) {
-    const cur = map.get(img.scene_number);
-    const nextUrl =
-      img.imageUrl != null && img.imageUrl !== ""
-        ? img.imageUrl
-        : cur?.imageUrl ?? null;
-    map.set(img.scene_number, {
-      scene_number: img.scene_number,
-      imageUrl: nextUrl,
-      status: img.status ?? cur?.status,
-    });
-  }
-  return Array.from(map.values());
+  const prevStudio: StudioScene[] = prev.map((s) => ({
+    id: null,
+    sequence: s.scene_number,
+    imageUrl: s.imageUrl ?? null,
+    status: s.status,
+  }));
+  const incomingStudio: StudioScene[] = incoming.map((s) => ({
+    id: null,
+    sequence: s.scene_number,
+    imageUrl: s.imageUrl ?? null,
+    status: s.status,
+  }));
+  return mergeStudioScenes(prevStudio, incomingStudio).map(
+    studioSceneToLegacyImage
+  );
 }
 
 export function readProgress(data: unknown): number | null {
@@ -104,88 +99,11 @@ export function readTotalCost(data: unknown): number | null {
   return null;
 }
 
+/** Parses legacy or bridged project payloads into the shape the hook expects. */
 export function parseImagesProjectResponse(
   raw: unknown
 ): ImagesProjectResponse | null {
-  if (!raw || typeof raw !== "object") return null;
-  const root = raw as Record<string, unknown>;
-
-  let project: Record<string, unknown> | null = null;
-  if (
-    root.data !== undefined &&
-    typeof root.data === "object" &&
-    root.data !== null
-  ) {
-    const d = root.data as Record<string, unknown>;
-    if (Array.isArray(d.images) || Array.isArray(d.scenes)) {
-      project = d;
-    } else if (
-      d.data !== undefined &&
-      typeof d.data === "object" &&
-      d.data !== null
-    ) {
-      const inner = d.data as Record<string, unknown>;
-      if (Array.isArray(inner.images) || Array.isArray(inner.scenes)) {
-        project = inner;
-      }
-    }
-  }
-  if (!project && (Array.isArray(root.images) || Array.isArray(root.scenes))) {
-    project = root;
-  }
-
-  const scenes = project
-    ? scenesFromPayload({
-        images: project.images,
-        scenes: project.scenes,
-      })
-    : scenesFromPayload(raw);
-
-  let progress: number | null = null;
-  if (project) {
-    const totalScenes = project.totalScenes;
-    const completedScenes = project.completedScenes;
-    if (
-      typeof totalScenes === "number" &&
-      totalScenes > 0 &&
-      typeof completedScenes === "number" &&
-      !Number.isNaN(completedScenes)
-    ) {
-      progress = Math.round((completedScenes / totalScenes) * 100);
-    }
-  }
-  const pFallback =
-    readProgress(raw) ?? (project ? readProgress(project) : null);
-  if (progress == null && pFallback != null) progress = pFallback;
-
-  const totalCost =
-    readTotalCost(raw) ?? (project ? readTotalCost(project) : null);
-
-  const videoSource =
-    project ??
-    (root.data && typeof root.data === "object" && root.data !== null
-      ? (root.data as Record<string, unknown>)
-      : null);
-
-  let videoUrl: string | null = null;
-  let videoStatus: string | null = null;
-  let videoError: string | null = null;
-  if (videoSource) {
-    const u = videoSource.videoUrl ?? videoSource.video_url;
-    videoUrl = normalizeImageUrl(u) ?? (typeof u === "string" ? u : null);
-    const vs = videoSource.videoStatus ?? videoSource.video_status;
-    videoStatus = typeof vs === "string" ? vs : null;
-    const ve = videoSource.videoError ?? videoSource.video_error;
-    videoError = typeof ve === "string" ? ve : null;
-  }
-
-  return { scenes, progress, totalCost, videoUrl, videoStatus, videoError };
-}
-
-export function isCompletedStatus(status: string | undefined): boolean {
-  if (!status) return false;
-  const s = status.toLowerCase();
-  return s === "completed" || s === "complete" || s === "done";
+  return parseLegacyImagesProjectResponse(raw);
 }
 
 export async function downloadImage(url: string, sceneNumber: number) {

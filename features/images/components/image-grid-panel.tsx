@@ -1,4 +1,5 @@
 import { Badge } from "@/components/ui/badge";
+import { memo } from "react";
 import { ProgressCard } from "@/components/ui/progress-card";
 import type { ImagesStudioState } from "../hooks/use-images-studio";
 import { ImageIcon } from "./icons";
@@ -30,7 +31,7 @@ type ImageGridPanelProps = Pick<
   | "handleCreateSlideshowVideo"
 >;
 
-export function ImageGridPanel({
+function ImageGridPanelInner({
   projectId,
   progress,
   projectFailed,
@@ -219,7 +220,7 @@ export function ImageGridPanel({
               {sortedImages.map((img) => (
                 <div
                   key={img.scene_number}
-                  className="relative overflow-hidden rounded-xl border border-white/[0.06] bg-zinc-900/60 shadow-[0_10px_30px_-12px_rgb(0_0_0/0.5)]"
+                  className="relative overflow-hidden rounded-xl border border-white/[0.06] bg-zinc-900/60 shadow-[0_10px_30px_-12px_rgb(0_0_0/0.5)] transition-[opacity,transform] duration-300 ease-out"
                 >
                   <div className="pointer-events-none absolute left-2 top-2 z-20 rounded-md bg-black/55 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-white/85 backdrop-blur-sm">
                     Scene {img.scene_number}
@@ -257,3 +258,5 @@ export function ImageGridPanel({
     </div>
   );
 }
+
+export const ImageGridPanel = memo(ImageGridPanelInner);

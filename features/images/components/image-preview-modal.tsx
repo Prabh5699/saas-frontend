@@ -1,3 +1,4 @@
+import { memo } from "react";
 import type { ImagesStudioState } from "../hooks/use-images-studio";
 
 type ImagePreviewModalProps = Pick<
@@ -13,7 +14,7 @@ type ImagePreviewModalProps = Pick<
   | "downloadImage"
 >;
 
-export function ImagePreviewModal({
+function ImagePreviewModalInner({
   previewScene,
   previewItem,
   sortedImages,
@@ -78,7 +79,7 @@ export function ImagePreviewModal({
           key={fallback.scene_number}
           src={fallback.imageUrl}
           alt={`Scene ${fallback.scene_number}`}
-          className="max-h-[85vh] w-full rounded-xl object-contain"
+          className="max-h-[85vh] w-full rounded-xl object-contain transition-opacity duration-300"
         />
 
         {total > 1 ? (
@@ -111,3 +112,5 @@ export function ImagePreviewModal({
     </div>
   );
 }
+
+export const ImagePreviewModal = memo(ImagePreviewModalInner);

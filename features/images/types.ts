@@ -1,3 +1,7 @@
+/**
+ * Legacy view types for the current image-grid UI.
+ * Canonical models live in `@/features/studio/types`.
+ */
 export type SceneImage = {
   scene_number: number;
   imageUrl?: string | null;
@@ -30,3 +34,5 @@ export type ImagesProjectResponse = {
   videoStatus: string | null;
   videoError: string | null;
 };
+
+export type { StudioScene, StudioProjectDetail, StudioProjectSummary } from "@/features/studio/types";

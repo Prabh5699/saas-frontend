@@ -1,4 +1,5 @@
 import { Button } from "@/components/ui/button";
+import { memo } from "react";
 import type { ImagesStudioState } from "../hooks/use-images-studio";
 import { ImageIcon } from "./icons";
 
@@ -17,7 +18,7 @@ type ImagePromptFormProps = Pick<
   | "handleRetryGeneration"
 >;
 
-export function ImagePromptForm({
+function ImagePromptFormInner({
   prompt,
   setPrompt,
   sceneCount,
@@ -141,3 +142,5 @@ export function ImagePromptForm({
     </div>
   );
 }
+
+export const ImagePromptForm = memo(ImagePromptFormInner);

@@ -3,6 +3,7 @@
 import { CinematicBackdrop } from "@/components/layout/cinematic-backdrop";
 import { PageShell } from "@/components/layout/page-shell";
 import Link from "next/link";
+import { memo, useMemo } from "react";
 import { useImagesStudio } from "../hooks/use-images-studio";
 import { ImageGridPanel } from "./image-grid-panel";
 import { ImageHistoryPanel } from "./image-history-panel";
@@ -10,8 +11,140 @@ import { ImagePreviewModal } from "./image-preview-modal";
 import { ImagePromptForm } from "./image-prompt-form";
 import { WandIcon } from "./icons";
 
-export function ImagesStudio() {
+function ImagesStudioShell() {
   const studio = useImagesStudio();
+
+  const historyPanelProps = useMemo(
+    () => ({
+      history: studio.history,
+      sortedHistory: studio.sortedHistory,
+      historySearch: studio.historySearch,
+      setHistorySearch: studio.setHistorySearch,
+      historyLoading: studio.historyLoading,
+      projectId: studio.projectId,
+      loadProject: studio.loadProject,
+      toggleHistoryFavorite: studio.toggleHistoryFavorite,
+      deleteHistoryProject: studio.deleteHistoryProject,
+    }),
+    [
+      studio.history,
+      studio.sortedHistory,
+      studio.historySearch,
+      studio.setHistorySearch,
+      studio.historyLoading,
+      studio.projectId,
+      studio.loadProject,
+      studio.toggleHistoryFavorite,
+      studio.deleteHistoryProject,
+    ]
+  );
+
+  const promptFormProps = useMemo(
+    () => ({
+      prompt: studio.prompt,
+      setPrompt: studio.setPrompt,
+      sceneCount: studio.sceneCount,
+      setSceneCount: studio.setSceneCount,
+      setCustomSceneCount: studio.setCustomSceneCount,
+      error: studio.error,
+      setError: studio.setError,
+      projectId: studio.projectId,
+      showLoader: studio.showLoader,
+      handleGenerate: studio.handleGenerate,
+      handleRetryGeneration: studio.handleRetryGeneration,
+    }),
+    [
+      studio.prompt,
+      studio.setPrompt,
+      studio.sceneCount,
+      studio.setSceneCount,
+      studio.setCustomSceneCount,
+      studio.error,
+      studio.setError,
+      studio.projectId,
+      studio.showLoader,
+      studio.handleGenerate,
+      studio.handleRetryGeneration,
+    ]
+  );
+
+  const gridPanelProps = useMemo(
+    () => ({
+      projectId: studio.projectId,
+      progress: studio.progress,
+      projectFailed: studio.projectFailed,
+      showLoader: studio.showLoader,
+      totalCost: studio.totalCost,
+      sortedImages: studio.sortedImages,
+      scrollAreaRef: studio.scrollAreaRef,
+      handleDownloadAll: studio.handleDownloadAll,
+      setPreviewScene: studio.setPreviewScene,
+      videoUrl: studio.videoUrl,
+      videoStatus: studio.videoStatus,
+      videoError: studio.videoError,
+      videoRenderLoading: studio.videoRenderLoading,
+      canCreateSlideshow: studio.canCreateSlideshow,
+      slideshowVideoDuration: studio.slideshowVideoDuration,
+      setSlideshowVideoDuration: studio.setSlideshowVideoDuration,
+      slideshowIncludeNarration: studio.slideshowIncludeNarration,
+      setSlideshowIncludeNarration: studio.setSlideshowIncludeNarration,
+      slideshowIncludeMusic: studio.slideshowIncludeMusic,
+      setSlideshowIncludeMusic: studio.setSlideshowIncludeMusic,
+      slideshowVoiceId: studio.slideshowVoiceId,
+      setSlideshowVoiceId: studio.setSlideshowVoiceId,
+      handleCreateSlideshowVideo: studio.handleCreateSlideshowVideo,
+    }),
+    [
+      studio.projectId,
+      studio.progress,
+      studio.projectFailed,
+      studio.showLoader,
+      studio.totalCost,
+      studio.sortedImages,
+      studio.scrollAreaRef,
+      studio.handleDownloadAll,
+      studio.setPreviewScene,
+      studio.videoUrl,
+      studio.videoStatus,
+      studio.videoError,
+      studio.videoRenderLoading,
+      studio.canCreateSlideshow,
+      studio.slideshowVideoDuration,
+      studio.setSlideshowVideoDuration,
+      studio.slideshowIncludeNarration,
+      studio.setSlideshowIncludeNarration,
+      studio.slideshowIncludeMusic,
+      studio.setSlideshowIncludeMusic,
+      studio.slideshowVoiceId,
+      studio.setSlideshowVoiceId,
+      studio.handleCreateSlideshowVideo,
+    ]
+  );
+
+  const previewModalProps = useMemo(
+    () => ({
+      previewScene: studio.previewScene,
+      previewItem: studio.previewItem,
+      sortedImages: studio.sortedImages,
+      viewableImages: studio.viewableImages,
+      previewIdx: studio.previewIdx,
+      closePreview: studio.closePreview,
+      showPrev: studio.showPrev,
+      showNext: studio.showNext,
+      downloadImage: studio.downloadImage,
+    }),
+    [
+      studio.previewScene,
+      studio.previewItem,
+      studio.sortedImages,
+      studio.viewableImages,
+      studio.previewIdx,
+      studio.closePreview,
+      studio.showPrev,
+      studio.showNext,
+      studio.downloadImage,
+    ]
+  );
 
   return (
     <div className="font-sans relative min-h-screen overflow-x-hidden bg-background text-foreground">
@@ -85,13 +218,15 @@ export function ImagesStudio() {
         </div>
 
         <div className="grid gap-8 lg:grid-cols-[minmax(0,280px)_minmax(0,1fr)_minmax(0,1.05fr)] lg:gap-8 xl:gap-10">
-          <ImageHistoryPanel {...studio} />
-          <ImagePromptForm {...studio} />
-          <ImageGridPanel {...studio} />
+          <ImageHistoryPanel {...historyPanelProps} />
+          <ImagePromptForm {...promptFormProps} />
+          <ImageGridPanel {...gridPanelProps} />
         </div>
       </PageShell>
 
-      <ImagePreviewModal {...studio} />
+      <ImagePreviewModal {...previewModalProps} />
     </div>
   );
 }
+
+export const ImagesStudio = memo(ImagesStudioShell);

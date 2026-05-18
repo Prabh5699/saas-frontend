@@ -1,3 +1,4 @@
+import { memo } from "react";
 import type { ImagesStudioState } from "../hooks/use-images-studio";
 import {
   historyCreatedLabel,
@@ -15,17 +16,19 @@ type ImageHistoryPanelProps = Pick<
   | "sortedHistory"
   | "historySearch"
   | "setHistorySearch"
+  | "historyLoading"
   | "projectId"
   | "loadProject"
   | "toggleHistoryFavorite"
   | "deleteHistoryProject"
 >;
 
-export function ImageHistoryPanel({
+function ImageHistoryPanelInner({
   history,
   sortedHistory,
   historySearch,
   setHistorySearch,
+  historyLoading,
   projectId,
   loadProject,
   toggleHistoryFavorite,
@@ -55,7 +58,26 @@ export function ImageHistoryPanel({
           />
         </div>
         <div className="min-h-0 flex-1 overflow-y-auto p-3">
-          {history.length === 0 ? (
+          {historyLoading && history.length === 0 ? (
+            <div
+              className="space-y-2 px-1 py-2"
+              aria-busy="true"
+              aria-label="Loading history"
+            >
+              {[1, 2, 3].map((i) => (
+                <div
+                  key={i}
+                  className="flex animate-pulse items-center gap-3 rounded-xl border border-white/[0.04] bg-zinc-900/40 p-2.5"
+                >
+                  <div className="h-12 w-12 shrink-0 rounded-lg bg-zinc-800/80" />
+                  <div className="min-w-0 flex-1 space-y-2">
+                    <div className="h-3 w-3/4 rounded bg-zinc-800/80" />
+                    <div className="h-2 w-1/2 rounded bg-zinc-800/60" />
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : history.length === 0 ? (
             <p className="px-1 py-6 text-center text-sm leading-relaxed text-zinc-500">
               Generate your first images
             </p>
@@ -161,3 +183,5 @@ export function ImageHistoryPanel({
     </aside>
   );
 }
+
+export const ImageHistoryPanel = memo(ImageHistoryPanelInner);
