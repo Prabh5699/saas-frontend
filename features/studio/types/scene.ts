@@ -32,6 +32,8 @@ export type StudioScene = {
   approvalStatus?: StudioApprovalStatus;
   narrationOverride?: string | null;
   motionPresetId?: string | null;
+  /** Catalog key for PATCH `motionPresetKey`. */
+  motionPresetKey?: string | null;
   renderReadiness?: StudioRenderReadiness;
   prompt?: string | null;
   durationSeconds?: number | null;

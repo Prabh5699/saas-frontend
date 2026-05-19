@@ -1,26 +1,24 @@
 /**
  * API mode for incremental migration.
- * - `legacy` — `/api/images/*` only (default, current production behavior)
- * - `projects` — prefer `/api/projects/*` reads where implemented
- * - `dual` — try projects read, fall back to legacy on failure
+ * - `legacy` — poll/render on `/api/images/*`; library still uses `GET /api/projects`
+ * - `projects` — same as legacy for reads (recommended)
+ * - `dual` — kept for compatibility; no longer calls removed `/api/images` list/search
  */
 export type StudioApiMode = "legacy" | "projects" | "dual";
 
 export function getStudioApiMode(): StudioApiMode {
   const raw = process.env.NEXT_PUBLIC_STUDIO_API_MODE?.trim().toLowerCase();
   if (raw === "legacy" || raw === "projects" || raw === "dual") return raw;
-  /** FE-2: default to dual-read (projects first, legacy fallback). Set `legacy` to roll back reads. */
-  return "dual";
+  return "projects";
 }
 
 export function useProjectsReads(): boolean {
-  const mode = getStudioApiMode();
-  return mode === "projects" || mode === "dual";
+  return true;
 }
 
 export function preferProjectsOnly(): boolean {
   return getStudioApiMode() === "projects";
 }
 
-/** Socket.IO namespace path segment (backend still serves `/images` during bridge). */
+/** Socket.IO namespace for image generation progress. */
 export const STUDIO_SOCKET_NAMESPACE = "/images";

@@ -42,6 +42,8 @@ export function legacyRowToStudioScene(row: Record<string, unknown>): StudioScen
       readString(row.narrationOverride ?? row.narration_override) ?? undefined,
     motionPresetId:
       readString(row.motionPresetId ?? row.motion_preset_id) ?? undefined,
+    motionPresetKey:
+      readString(row.motionPresetKey ?? row.motion_preset_key) ?? undefined,
     renderReadiness:
       readString(row.renderReadiness ?? row.render_readiness) ?? undefined,
     prompt: readString(row.prompt) ?? undefined,
@@ -214,6 +216,7 @@ export function parseLegacyProjectList(raw: unknown): StudioProjectSummary[] {
       }
       return {
         id,
+        legacyImageProjectId: id,
         prompt: readString(p.prompt) ?? "",
         thumbnail: extractSummaryThumbnail(p),
         progress,
@@ -262,9 +265,16 @@ export function parseLegacyImagesProjectResponse(
 export function studioSummaryToLegacyImageProject(
   summary: StudioProjectSummary
 ): ImageProject {
+  const imageProjectId = summary.legacyImageProjectId;
+  const linked = Boolean(imageProjectId);
   return {
-    id: summary.id,
-    projectId: summary.id,
+    id: imageProjectId ?? summary.id,
+    projectId: imageProjectId ?? undefined,
+    studioProjectId: summary.id,
+    legacyImageProjectId: imageProjectId ?? undefined,
+    imagePipelineLinked: linked,
+    templateKey: summary.templateKey ?? undefined,
+    videoStatus: summary.videoStatus ?? undefined,
     prompt: summary.prompt,
     thumbnail: summary.thumbnail,
     progress: summary.progress ?? undefined,

@@ -11,7 +11,15 @@ export type SceneImage = {
 export type ImageProject = {
   id?: string | number;
   _id?: string | number;
+  /** Legacy image project id — poll, render, WebSocket. */
   projectId?: string | number;
+  /** Studio `projects.id` — PATCH scene metadata. */
+  studioProjectId?: string;
+  legacyImageProjectId?: string;
+  /** False when the row has no linked `image_projects` id (pre dual-write). */
+  imagePipelineLinked?: boolean;
+  templateKey?: string;
+  videoStatus?: string | null;
   prompt?: string;
   thumbnail?: string | null;
   progress?: number;

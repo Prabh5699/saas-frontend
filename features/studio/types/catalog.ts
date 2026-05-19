@@ -1,14 +1,19 @@
 export type StudioTemplate = {
   id: string;
+  /** Sent as `templateKey` on `POST /api/images/generate`. */
+  key: string;
   name: string;
   description?: string | null;
   category?: string | null;
   thumbnailUrl?: string | null;
   defaultSceneCount?: number | null;
+  defaultDurationSec?: number | null;
+  defaultAspectRatio?: string | null;
 };
 
 export type StudioMotionPreset = {
   id: string;
+  key: string;
   name: string;
   description?: string | null;
   category?: string | null;

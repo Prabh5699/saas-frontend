@@ -99,8 +99,21 @@ export function parseProjectsApiList(raw: unknown): StudioProjectSummary[] {
       ) {
         progress = Math.round((completed / total) * 100);
       }
+      const legacyImageProjectId =
+        readString(
+          p.legacyImageProjectId ??
+            p.legacy_image_project_id ??
+            p.imageProjectId ??
+            p.image_project_id
+        ) ?? null;
+
       return {
         id,
+        legacyImageProjectId,
+        templateKey: readString(
+          p.templateKey ?? p.template_key ?? p.template
+        ),
+        videoStatus: readString(p.videoStatus ?? p.video_status),
         prompt: readString(p.prompt ?? p.title) ?? "",
         thumbnail: extractSummaryThumbnail(p),
         progress,
@@ -131,9 +144,12 @@ export function parseTemplatesCatalog(raw: unknown): StudioTemplate[] {
       const r = row as Record<string, unknown>;
       const id = readId(r);
       const name = readString(r.name);
-      if (!id || !name) return null;
+      const key =
+        readString(r.key) ?? readString(r.templateKey) ?? id;
+      if (!id || !name || !key) return null;
       return {
         id,
+        key,
         name,
         description: readString(r.description),
         category: readString(r.category),
@@ -142,6 +158,14 @@ export function parseTemplatesCatalog(raw: unknown): StudioTemplate[] {
         ),
         defaultSceneCount: readNumber(
           r.defaultSceneCount ?? r.default_scene_count ?? r.sceneCount
+        ),
+        defaultDurationSec: readNumber(
+          r.defaultDurationSec ??
+            r.default_duration_sec ??
+            r.defaultDurationSeconds
+        ),
+        defaultAspectRatio: readString(
+          r.defaultAspectRatio ?? r.default_aspect_ratio
         ),
       };
     })
@@ -155,9 +179,12 @@ export function parseMotionPresetsCatalog(raw: unknown): StudioMotionPreset[] {
       const r = row as Record<string, unknown>;
       const id = readId(r);
       const name = readString(r.name);
-      if (!id || !name) return null;
+      const key =
+        readString(r.key) ?? readString(r.motionPresetKey) ?? id;
+      if (!id || !name || !key) return null;
       return {
         id,
+        key,
         name,
         description: readString(r.description),
         category: readString(r.category),

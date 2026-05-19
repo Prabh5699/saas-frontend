@@ -5,6 +5,15 @@ import {
   renderStudioSlideshow,
   setStudioProjectFavorite,
 } from "@/features/studio/api/facade";
+import { parseProjectScenesList } from "@/features/studio/adapters/projects";
+import { patchProjectScene, listProjectScenes } from "@/features/studio/api/projects";
+import { resolveStudioProjectIdForImage } from "@/features/studio/lib/resolve-studio-project";
+import { mergeStudioScenes } from "@/features/studio/adapters/legacy-images";
+import { FALLBACK_STUDIO_TEMPLATES } from "../lib/fallback-templates";
+import {
+  DEFAULT_VIDEO_DURATION_SECONDS,
+  STUDIO_TEMPLATE_STORAGE_KEY,
+} from "../constants";
 import type { ProjectDetailPatch } from "@/features/studio/lib/apply-project-detail";
 import {
   useProjectDetailSync,
@@ -28,10 +37,13 @@ import {
 import type { RenderVideoFromImagesBody } from "../api";
 import { SLIDESHOW_DEFAULT_VOICE_ID } from "../slideshow-defaults";
 import type { SceneImage } from "../types";
+import type { StudioScene } from "@/features/studio/types";
 import {
   downloadImage,
   extractProjectId,
+  historyImageProjectId,
   historyProjectId,
+  historyStudioProjectId,
 } from "../utils";
 
 export const LAST_IMAGE_PROJECT_KEY = LAST_PROJECT_STORAGE_KEY;
@@ -41,7 +53,17 @@ export function useImagesStudio() {
   const [prompt, setPrompt] = useState("");
   const [sceneCount, setSceneCount] = useState(5);
   const [loading, setLoading] = useState(false);
+  /** Legacy `image_projects` id — poll, render, WebSocket. */
   const [projectId, setProjectId] = useState<string | null>(null);
+  /** Studio `projects.id` — PATCH scene metadata (from list `legacyImageProjectId` link). */
+  const [studioProjectId, setStudioProjectId] = useState<string | null>(null);
+  const [templateKey, setTemplateKeyState] = useState(() => {
+    if (typeof window === "undefined") return "cinematic_trailer";
+    return (
+      localStorage.getItem(STUDIO_TEMPLATE_STORAGE_KEY) ?? "cinematic_trailer"
+    );
+  });
+  const [skipRenderReadinessCheck, setSkipRenderReadinessCheck] = useState(true);
   const [progress, setProgress] = useState(0);
   const [error, setError] = useState<string | null>(null);
   const [projectFailed, setProjectFailed] = useState(false);
@@ -50,8 +72,11 @@ export function useImagesStudio() {
   const [videoStatus, setVideoStatus] = useState<string | null>(null);
   const [videoError, setVideoError] = useState<string | null>(null);
   const [videoRenderLoading, setVideoRenderLoading] = useState(false);
-  const [slideshowVideoDuration, setSlideshowVideoDuration] = useState(60);
-  const [slideshowIncludeNarration, setSlideshowIncludeNarration] = useState(true);
+  const [slideshowVideoDuration, setSlideshowVideoDuration] = useState(
+    DEFAULT_VIDEO_DURATION_SECONDS
+  );
+  const [patchingScene, setPatchingScene] = useState<number | null>(null);
+  const [slideshowIncludeNarration, setSlideshowIncludeNarration] = useState(false);
   const [slideshowIncludeMusic, setSlideshowIncludeMusic] = useState(false);
   const [slideshowVoiceId, setSlideshowVoiceId] = useState(
     SLIDESHOW_DEFAULT_VOICE_ID
@@ -66,6 +91,7 @@ export function useImagesStudio() {
     seedPlaceholderScenes,
     applyDetailPatch: applyScenePatch,
     applySocketPayload,
+    setScenes,
   } = useSceneState();
 
   const {
@@ -75,10 +101,55 @@ export function useImagesStudio() {
     setHistorySearch,
     sortedHistory,
     historyLoading,
+    allHistoryCount,
     fetchHistory,
   } = useProjectHistory();
 
-  useStudioCatalog(true);
+  const {
+    templates: catalogTemplates,
+    motionPresets,
+    catalogLoading,
+    catalogError,
+  } = useStudioCatalog(true);
+
+  const templates = useMemo(() => {
+    return catalogTemplates.length > 0
+      ? catalogTemplates
+      : FALLBACK_STUDIO_TEMPLATES;
+  }, [catalogTemplates]);
+
+  const selectedTemplate = useMemo(
+    () => templates.find((t) => t.key === templateKey) ?? templates[0],
+    [templates, templateKey]
+  );
+
+  const applyTemplateDefaults = useCallback(
+    (t: (typeof templates)[0]) => {
+      if (t.defaultSceneCount != null && t.defaultSceneCount > 0) {
+        setSceneCount(Math.min(20, Math.max(1, t.defaultSceneCount)));
+      }
+      if (t.defaultDurationSec != null && t.defaultDurationSec > 0) {
+        setSlideshowVideoDuration(
+          Math.min(86400, Math.max(1, t.defaultDurationSec))
+        );
+      }
+    },
+    []
+  );
+
+  const setTemplateKey = useCallback(
+    (key: string) => {
+      setTemplateKeyState(key);
+      try {
+        localStorage.setItem(STUDIO_TEMPLATE_STORAGE_KEY, key);
+      } catch {
+        /* ignore */
+      }
+      const t = templates.find((x) => x.key === key);
+      if (t) applyTemplateDefaults(t);
+    },
+    [templates, applyTemplateDefaults]
+  );
 
   const scrollAreaRef = useRef<HTMLDivElement | null>(null);
   const prevUrlCountRef = useRef(0);
@@ -100,7 +171,7 @@ export function useImagesStudio() {
   );
 
   const resetSlideshowOptions = useCallback(() => {
-    setSlideshowVideoDuration(60);
+    setSlideshowVideoDuration(DEFAULT_VIDEO_DURATION_SECONDS);
     setSlideshowIncludeNarration(true);
     setSlideshowIncludeMusic(false);
     setSlideshowVoiceId(SLIDESHOW_DEFAULT_VOICE_ID);
@@ -115,6 +186,7 @@ export function useImagesStudio() {
 
   const clearActiveProject = useCallback(() => {
     setProjectId(null);
+    setStudioProjectId(null);
     resetScenes();
     setProgress(0);
     setTotalCost(null);
@@ -257,18 +329,104 @@ export function useImagesStudio() {
   }, [clearActiveProject, disconnectSocket]);
 
   const loadProject = useCallback(
-    (id: string) => {
+    (
+      imageId: string,
+      studioId?: string | null,
+      meta?: { templateKey?: string }
+    ) => {
       try {
-        localStorage.setItem(LAST_IMAGE_PROJECT_KEY, id);
+        localStorage.setItem(LAST_IMAGE_PROJECT_KEY, imageId);
       } catch {
         /* ignore */
       }
-      setProjectId(id);
+      setProjectId(imageId);
+      setStudioProjectId(studioId ?? null);
+      if (meta?.templateKey) setTemplateKeyState(meta.templateKey);
+      setProjectFailed(false);
+      setError(null);
       resetScenes();
       resetVideoState();
       resetSlideshowOptions();
     },
     [resetScenes, resetSlideshowOptions, resetVideoState]
+  );
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const saved = localStorage.getItem(LAST_IMAGE_PROJECT_KEY);
+    if (!saved || projectId) return;
+    loadProject(saved);
+  }, [loadProject, projectId]);
+
+  useEffect(() => {
+    if (!studioProjectId) return;
+    let cancelled = false;
+    void (async () => {
+      const { res, data } = await listProjectScenes({
+        projectId: studioProjectId,
+        headers: getStudioAuthHeaders(),
+      });
+      if (cancelled || !res.ok || data == null) return;
+      const studioScenes = parseProjectScenesList(data);
+      if (studioScenes.length === 0) return;
+      setScenes((prev) => mergeStudioScenes(prev, studioScenes));
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [studioProjectId, setScenes]);
+
+  const handlePatchScene = useCallback(
+    async (
+      sceneNumber: number,
+      patch: { renderReadiness?: string; motionPresetKey?: string | null }
+    ) => {
+      if (!studioProjectId) {
+        setError("Studio project not linked — cannot edit scene metadata.");
+        return;
+      }
+      setPatchingScene(sceneNumber);
+      setError(null);
+      try {
+        const body: Record<string, unknown> = { ...patch };
+        if (patch.renderReadiness === "ready") {
+          body.approvalStatus = "approved";
+        }
+        const { res } = await patchProjectScene({
+          projectId: studioProjectId,
+          sceneNumber,
+          patch: body,
+          headers: getStudioAuthHeaders(),
+        });
+        if (!res.ok) {
+          setError("Could not update scene. Try again.");
+          return;
+        }
+        setScenes((prev) =>
+          prev.map((s) =>
+            s.sequence === sceneNumber
+              ? {
+                  ...s,
+                  ...(patch.renderReadiness != null
+                    ? {
+                        renderReadiness:
+                          patch.renderReadiness as StudioScene["renderReadiness"],
+                      }
+                    : {}),
+                  ...(patch.motionPresetKey !== undefined
+                    ? { motionPresetKey: patch.motionPresetKey }
+                    : {}),
+                }
+              : s
+          )
+        );
+      } catch (err) {
+        setError(getApiErrorMessage(err, "Could not update scene."));
+      } finally {
+        setPatchingScene(null);
+      }
+    },
+    [studioProjectId, setScenes]
   );
 
   const toggleHistoryFavorite = useCallback(
@@ -283,7 +441,7 @@ export function useImagesStudio() {
       );
       try {
         const { data } = await setStudioProjectFavorite({
-          id,
+          imageProjectId: id,
           isFavorite: next,
           headers: getStudioAuthHeaders(),
         });
@@ -323,7 +481,7 @@ export function useImagesStudio() {
       const wasCurrent = projectId === id;
       try {
         const { res } = await deleteStudioProject({
-          id,
+          imageProjectId: id,
           headers: getStudioAuthHeaders(),
         });
         if (!res.ok) {
@@ -423,6 +581,10 @@ export function useImagesStudio() {
       setError("Describe your images first—what should we create?");
       return;
     }
+    if (!templateKey) {
+      setError("Pick a style template before generating.");
+      return;
+    }
     setError(null);
     setLoading(true);
     setProjectFailed(false);
@@ -439,6 +601,7 @@ export function useImagesStudio() {
       const { data } = await generateStudioImages({
         prompt: trimmed,
         sceneCount,
+        templateKey,
         headers: getStudioAuthHeaders(),
       });
 
@@ -449,6 +612,7 @@ export function useImagesStudio() {
       }
 
       setProjectId(id);
+      setStudioProjectId(null);
       setProgress(0);
       seedPlaceholderScenes(sceneCount);
       try {
@@ -458,6 +622,14 @@ export function useImagesStudio() {
       }
       setHistorySearch("");
       await fetchHistory();
+      const token = localStorage.getItem("access_token");
+      if (token) {
+        const studioId = await resolveStudioProjectIdForImage({
+          imageProjectId: id,
+          token,
+        });
+        if (studioId) setStudioProjectId(studioId);
+      }
     } catch (err) {
       setError(getApiErrorMessage(err, "Network error. Is the API running?"));
     } finally {
@@ -468,6 +640,7 @@ export function useImagesStudio() {
     fetchHistory,
     prompt,
     sceneCount,
+    templateKey,
     resetScenes,
     resetSlideshowOptions,
     resetVideoState,
@@ -477,7 +650,6 @@ export function useImagesStudio() {
 
   const canCreateSlideshow = useMemo(() => {
     if (!projectId || projectFailed) return false;
-    if (progress < 100) return false;
     if (!scenes.some((s) => Boolean(s.imageUrl))) return false;
     const v = (videoStatus ?? "").toLowerCase();
     if (v === "queued" || v === "processing") return false;
@@ -487,7 +659,6 @@ export function useImagesStudio() {
   }, [
     projectId,
     projectFailed,
-    progress,
     scenes,
     videoStatus,
     videoUrl,
@@ -508,6 +679,7 @@ export function useImagesStudio() {
       videoDurationSeconds: seconds,
       includeNarration: slideshowIncludeNarration,
       includeMusic: slideshowIncludeMusic,
+      skipRenderReadinessCheck,
     };
     const voice = slideshowVoiceId.trim() || SLIDESHOW_DEFAULT_VOICE_ID;
     if (voice) body.voiceId = voice;
@@ -515,10 +687,12 @@ export function useImagesStudio() {
     setVideoRenderLoading(true);
     try {
       const { res, data } = await renderStudioSlideshow({
-        projectId,
+        imageProjectId: projectId,
+        studioProjectId,
         body,
         headers: getStudioAuthHeaders(),
         scenes,
+        patchScenesBeforeRender: !skipRenderReadinessCheck,
       });
       if (res.status === 409) {
         const msg =
@@ -550,10 +724,12 @@ export function useImagesStudio() {
     }
   }, [
     projectId,
+    studioProjectId,
     slideshowVideoDuration,
     slideshowIncludeNarration,
     slideshowIncludeMusic,
     slideshowVoiceId,
+    skipRenderReadinessCheck,
     scenes,
   ]);
 
@@ -579,8 +755,22 @@ export function useImagesStudio() {
     setSceneCount,
     setCustomSceneCount,
     projectId,
+    studioProjectId,
+    templates,
+    motionPresets,
+    selectedTemplate,
+    templateKey,
+    setTemplateKey,
+    catalogLoading,
+    catalogError,
+    skipRenderReadinessCheck,
+    setSkipRenderReadinessCheck,
+    patchingScene,
+    handlePatchScene,
     storyboardId,
     scenes,
+    slideshowVideoDuration,
+    setSlideshowVideoDuration,
     progress,
     error,
     setError,
@@ -591,8 +781,6 @@ export function useImagesStudio() {
     videoError,
     videoRenderLoading,
     canCreateSlideshow,
-    slideshowVideoDuration,
-    setSlideshowVideoDuration,
     slideshowIncludeNarration,
     setSlideshowIncludeNarration,
     slideshowIncludeMusic,
@@ -606,6 +794,7 @@ export function useImagesStudio() {
     setHistorySearch,
     sortedHistory,
     historyLoading,
+    allHistoryCount,
     sortedImages,
     scrollAreaRef,
     showLoader,

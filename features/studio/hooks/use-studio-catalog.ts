@@ -10,7 +10,6 @@ import {
   listTemplates,
   listVoiceProfiles,
 } from "@/features/studio/api/catalog";
-import { useProjectsReads } from "@/features/studio/config";
 import type {
   StudioMotionPreset,
   StudioTemplate,
@@ -28,7 +27,7 @@ export function useStudioCatalog(enabled = true) {
   const loadedRef = useRef(false);
 
   const loadCatalog = useCallback(async () => {
-    if (!enabled || !useProjectsReads() || loadedRef.current) return;
+    if (!enabled || loadedRef.current) return;
     const headers = getStudioAuthHeaders();
     if (!headers.Authorization) return;
 

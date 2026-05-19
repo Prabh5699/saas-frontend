@@ -3,18 +3,17 @@
 import type { ImageProject } from "@/features/images/types";
 import {
   fetchStudioProjectListLegacyView,
-  searchStudioProjectsLegacyView,
+  filterStudioProjectsByQuery,
 } from "@/features/studio/api/facade";
-import { getApiErrorMessage } from "@/lib/api";
+import { getStudioAuthHeaders } from "@/features/studio/hooks/studio-auth";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   historyCreatedTime,
-  historyProjectId,
   historyProjectIsFavorite,
 } from "@/features/images/utils";
 
 export function useProjectHistory() {
-  const [history, setHistory] = useState<ImageProject[]>([]);
+  const [allHistory, setAllHistory] = useState<ImageProject[]>([]);
   const [historySearch, setHistorySearch] = useState("");
   const [historyLoading, setHistoryLoading] = useState(false);
 
@@ -23,8 +22,11 @@ export function useProjectHistory() {
     if (!token) return;
     setHistoryLoading(true);
     try {
-      const list = await fetchStudioProjectListLegacyView(token);
-      setHistory(list);
+      const list = await fetchStudioProjectListLegacyView(
+        token,
+        getStudioAuthHeaders()
+      );
+      setAllHistory(list);
     } catch {
       /* ignore */
     } finally {
@@ -39,33 +41,10 @@ export function useProjectHistory() {
     void fetchHistory();
   }, [fetchHistory]);
 
-  useEffect(() => {
-    const q = historySearch.trim();
-    if (q === "") return;
-
-    const t = window.setTimeout(() => {
-      void (async () => {
-        const token = localStorage.getItem("access_token");
-        if (!token) return;
-        setHistoryLoading(true);
-        try {
-          const list = await searchStudioProjectsLegacyView({ query: q, token });
-          setHistory(list);
-        } catch (err) {
-          console.warn(getApiErrorMessage(err, "Search failed"));
-        } finally {
-          setHistoryLoading(false);
-        }
-      })();
-    }, 300);
-    return () => clearTimeout(t);
-  }, [historySearch]);
-
-  useEffect(() => {
-    if (historySearch.trim() === "") {
-      void fetchHistory();
-    }
-  }, [historySearch, fetchHistory]);
+  const history = useMemo(
+    () => filterStudioProjectsByQuery(allHistory, historySearch),
+    [allHistory, historySearch]
+  );
 
   const sortedHistory = useMemo(() => {
     return [...history].sort((a, b) => {
@@ -78,7 +57,9 @@ export function useProjectHistory() {
 
   return {
     history,
-    setHistory,
+    allHistory,
+    allHistoryCount: allHistory.length,
+    setHistory: setAllHistory,
     historySearch,
     setHistorySearch,
     sortedHistory,

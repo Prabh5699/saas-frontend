@@ -2,6 +2,10 @@ import type { StudioScene } from "./scene";
 
 export type StudioProjectSummary = {
   id: string;
+  /** Same as `image_projects` id — use for poll, render, WebSocket. */
+  legacyImageProjectId: string | null;
+  templateKey?: string | null;
+  videoStatus?: string | null;
   prompt: string;
   thumbnail: string | null;
   progress: number | null;

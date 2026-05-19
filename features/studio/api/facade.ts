@@ -1,66 +1,56 @@
-import { getStudioApiMode, preferProjectsOnly, useProjectsReads } from "../config";
 import {
   parseLegacyImagesProjectResponse,
   parseLegacyProjectDetail,
-  parseLegacyProjectList,
   studioDetailToLegacyResponse,
   studioSummaryToLegacyImageProject,
 } from "../adapters/legacy-images";
-import {
-  parseProjectScenesList,
-  parseProjectsApiDetail,
-  parseProjectsApiList,
-} from "../adapters/projects";
-import {
-  shouldFallbackToLegacyDetail,
-  shouldFallbackToLegacyList,
-} from "../lib/read-fallback";
+import { parseProjectsApiList } from "../adapters/projects";
 import type { ImageProject, ImagesProjectResponse } from "@/features/images/types";
-import type { StudioProjectDetail } from "../types";
+import type { StudioScene } from "../types";
 import {
   deleteLegacyImageProject,
   generateLegacyImages,
   getLegacyImageProject,
-  listLegacyImageProjects,
   renderLegacySlideshowVideo,
-  searchLegacyImageProjects,
   setLegacyImageProjectFavorite,
   type RenderSlideshowBody,
 } from "./legacy-images";
+import { enrichHistoryThumbnails } from "../lib/enrich-history-thumbnails";
 import { prepareScenesForSlideshowRender } from "./prepare-render";
-import {
-  deleteProject,
-  getProject,
-  listProjectScenes,
-  listProjects,
-  renderProjectSlideshow,
-  searchProjects,
-  setProjectFavorite,
-} from "./projects";
-import type { StudioScene } from "../types";
+import { listProjects } from "./projects";
 
-function imageProjectsFromSummaries(
-  summaries: ReturnType<typeof parseLegacyProjectList>
-): ImageProject[] {
-  return summaries.map(studioSummaryToLegacyImageProject);
+/** Library sidebar — `GET /api/projects` (+ image detail for missing thumbs). */
+export async function fetchStudioProjectListLegacyView(
+  token: string,
+  headers?: Record<string, string>
+): Promise<ImageProject[]> {
+  const { res, data } = await listProjects(token);
+  if (!res.ok || data == null) return [];
+  const projects = parseProjectsApiList(data).map(
+    studioSummaryToLegacyImageProject
+  );
+  if (!headers?.Authorization) {
+    return projects;
+  }
+  return enrichHistoryThumbnails({ projects, headers });
 }
 
-async function enrichProjectScenes(
-  projectId: string,
-  headers: Record<string, string>,
-  studio: StudioProjectDetail
-): Promise<StudioProjectDetail> {
-  if (studio.scenes.length > 0) return studio;
-  const { res, data } = await listProjectScenes({ projectId, headers });
-  if (!res.ok) return studio;
-  const scenes = parseProjectScenesList(data);
-  if (scenes.length === 0) return studio;
-  return { ...studio, scenes };
+/** Client-side filter (backend has no `GET /api/projects/search`). */
+export function filterStudioProjectsByQuery(
+  projects: ImageProject[],
+  query: string
+): ImageProject[] {
+  const q = query.trim().toLowerCase();
+  if (!q) return projects;
+  return projects.filter((p) => {
+    const prompt = typeof p.prompt === "string" ? p.prompt.toLowerCase() : "";
+    return prompt.includes(q);
+  });
 }
 
 /**
- * Fetch project detail — projects API when mode allows, else legacy images.
- * In `dual` mode, falls back to legacy when projects payload has no image URLs.
+ * Poll generation + video status — always `GET /api/images/:imageProjectId`.
+ * `id` must be the legacy image project id from generate, not `projects.id`.
  */
 export async function fetchStudioProjectDetailLegacyView({
   id,
@@ -72,63 +62,108 @@ export async function fetchStudioProjectDetailLegacyView({
   res: Response;
   data: unknown;
   legacy: ImagesProjectResponse | null;
-  studio: StudioProjectDetail | null;
+  studio: null;
 }> {
-  /**
-   * Dual-read for project *detail* caused 404 (projects) + 200 (images) on every poll.
-   * Use legacy detail until projects payloads include image URLs reliably.
-   */
-  const useProjectsDetail =
-    useProjectsReads() && getStudioApiMode() === "projects";
-
-  if (useProjectsDetail) {
-    const { res, data } = await getProject({ id, headers });
-    let studio = res.ok ? parseProjectsApiDetail(data) : null;
-    if (studio) {
-      studio = await enrichProjectScenes(id, headers, studio);
-      if (!shouldFallbackToLegacyDetail(studio)) {
-        return {
-          res,
-          data,
-          studio,
-          legacy: studioDetailToLegacyResponse(studio),
-        };
-      }
-    }
-    if (preferProjectsOnly()) {
-      return { res, data, studio: null, legacy: null };
-    }
-  }
-
   const { res, data } = await getLegacyImageProject({ id, headers });
-  const studio =
-    parseProjectsApiDetail(data) ?? parseLegacyProjectDetail(data);
+  const detail = parseLegacyProjectDetail(data);
   const legacy =
-    studio != null
-      ? studioDetailToLegacyResponse(studio)
+    detail != null
+      ? studioDetailToLegacyResponse(detail)
       : parseLegacyImagesProjectResponse(data);
-  return { res, data, legacy, studio };
+  return { res, data, legacy, studio: null };
 }
 
-export async function fetchStudioProjectListLegacyView(
-  token: string
-): Promise<ImageProject[]> {
-  if (useProjectsReads()) {
-    const { res, data } = await listProjects(token);
-    if (res.ok && data != null) {
-      const parsed = parseProjectsApiList(data);
-      if (parsed.length > 0 && !shouldFallbackToLegacyList(parsed)) {
-        return imageProjectsFromSummaries(parsed);
-      }
-    }
-    if (preferProjectsOnly()) return [];
+export async function generateStudioImages({
+  prompt,
+  sceneCount,
+  templateKey,
+  voiceProfileKey,
+  headers,
+}: {
+  prompt: string;
+  sceneCount: number;
+  templateKey?: string;
+  voiceProfileKey?: string;
+  headers: Record<string, string>;
+}) {
+  return generateLegacyImages({
+    prompt,
+    sceneCount,
+    templateKey,
+    voiceProfileKey,
+    headers,
+  });
+}
+
+export async function renderStudioSlideshow({
+  imageProjectId,
+  studioProjectId,
+  body,
+  headers,
+  scenes = [],
+  patchScenesBeforeRender = false,
+}: {
+  /** Legacy `image_projects` id — required for `POST .../render-video`. */
+  imageProjectId: string;
+  /** `projects.id` — only used when PATCHing scene readiness before render. */
+  studioProjectId?: string | null;
+  body?: RenderSlideshowBody;
+  headers: Record<string, string>;
+  scenes?: StudioScene[];
+  patchScenesBeforeRender?: boolean;
+}) {
+  const renderBody: RenderSlideshowBody = {
+    ...body,
+    skipRenderReadinessCheck: body?.skipRenderReadinessCheck ?? true,
+  };
+
+  if (
+    patchScenesBeforeRender &&
+    studioProjectId &&
+    scenes.length > 0 &&
+    !renderBody.skipRenderReadinessCheck
+  ) {
+    await prepareScenesForSlideshowRender({
+      studioProjectId,
+      scenes,
+      headers,
+    });
   }
 
-  const { res, data } = await listLegacyImageProjects(token);
-  if (!res.ok || data == null) return [];
-  return imageProjectsFromSummaries(parseLegacyProjectList(data));
+  return renderLegacySlideshowVideo({
+    projectId: imageProjectId,
+    body: renderBody,
+    headers,
+  });
 }
 
+export async function setStudioProjectFavorite({
+  imageProjectId,
+  isFavorite,
+  headers,
+}: {
+  imageProjectId: string;
+  isFavorite: boolean;
+  headers: Record<string, string>;
+}) {
+  return setLegacyImageProjectFavorite({
+    id: imageProjectId,
+    isFavorite,
+    headers,
+  });
+}
+
+export async function deleteStudioProject({
+  imageProjectId,
+  headers,
+}: {
+  imageProjectId: string;
+  headers: Record<string, string>;
+}) {
+  return deleteLegacyImageProject({ id: imageProjectId, headers });
+}
+
+/** @deprecated Use `filterStudioProjectsByQuery` — no server search endpoint. */
 export async function searchStudioProjectsLegacyView({
   query,
   token,
@@ -136,114 +171,6 @@ export async function searchStudioProjectsLegacyView({
   query: string;
   token: string;
 }): Promise<ImageProject[]> {
-  if (useProjectsReads()) {
-    const { res, data } = await searchProjects({ query, token });
-    if (res.ok && data != null) {
-      const parsed = parseProjectsApiList(data);
-      if (parsed.length > 0 && !shouldFallbackToLegacyList(parsed)) {
-        return imageProjectsFromSummaries(parsed);
-      }
-    }
-    if (preferProjectsOnly()) return [];
-  }
-
-  const { res, data } = await searchLegacyImageProjects({ query, token });
-  if (!res.ok || data == null) return [];
-  return imageProjectsFromSummaries(parseLegacyProjectList(data));
-}
-
-/** Writes stay on legacy `/api/images/*` during FE-2. */
-export async function generateStudioImages({
-  prompt,
-  sceneCount,
-  headers,
-}: {
-  prompt: string;
-  sceneCount: number;
-  headers: Record<string, string>;
-}) {
-  return generateLegacyImages({ prompt, sceneCount, headers });
-}
-
-function isRenderReadinessError(data: unknown): boolean {
-  if (!data || typeof data !== "object") return false;
-  const msg = String(
-    (data as { message?: unknown }).message ?? ""
-  ).toLowerCase();
-  return (
-    msg.includes("renderreadiness") ||
-    msg.includes("eligible for render") ||
-    msg.includes("no scenes eligible")
-  );
-}
-
-export async function renderStudioSlideshow({
-  projectId,
-  body,
-  headers,
-  scenes = [],
-}: {
-  projectId: string;
-  body?: RenderSlideshowBody;
-  headers: Record<string, string>;
-  scenes?: StudioScene[];
-}) {
-  if (scenes.length > 0) {
-    await prepareScenesForSlideshowRender({ projectId, scenes, headers });
-  }
-
-  const renderBody: RenderSlideshowBody = {
-    ...body,
-    skipRenderReadinessCheck: true,
-    skipRenderReadiness: true,
-  };
-
-  const legacyResult = await renderLegacySlideshowVideo({
-    projectId,
-    body: renderBody,
-    headers,
-  });
-
-  if (legacyResult.res.ok || !isRenderReadinessError(legacyResult.data)) {
-    return legacyResult;
-  }
-
-  const projectsResult = await renderProjectSlideshow({
-    projectId,
-    body: renderBody as Record<string, unknown>,
-    headers,
-  });
-
-  if (projectsResult.res.ok) return projectsResult;
-  return legacyResult;
-}
-
-export async function setStudioProjectFavorite({
-  id,
-  isFavorite,
-  headers,
-}: {
-  id: string;
-  isFavorite: boolean;
-  headers: Record<string, string>;
-}) {
-  if (useProjectsReads()) {
-    const result = await setProjectFavorite({ id, isFavorite, headers });
-    if (result.res.ok || preferProjectsOnly()) return result;
-  }
-  return setLegacyImageProjectFavorite({ id, isFavorite, headers });
-}
-
-export async function deleteStudioProject({
-  id,
-  headers,
-}: {
-  id: string;
-  headers: Record<string, string>;
-}) {
-  if (useProjectsReads()) {
-    const result = await deleteProject({ id, headers });
-    if (result.res.ok || preferProjectsOnly()) return result;
-  }
-  return deleteLegacyImageProject({ id, headers });
+  const all = await fetchStudioProjectListLegacyView(token);
+  return filterStudioProjectsByQuery(all, query);
 }

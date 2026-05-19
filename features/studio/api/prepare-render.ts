@@ -2,15 +2,15 @@ import type { StudioScene } from "../types";
 import { patchProjectScene } from "./projects";
 
 /**
- * Backend cinematic render requires scenes to pass renderReadiness filters.
- * Mark completed scenes ready before slideshow POST (dual-write bridge).
+ * Optional pre-render step: PATCH scenes on the studio project
+ * (`projects.id`, not image project id).
  */
 export async function prepareScenesForSlideshowRender({
-  projectId,
+  studioProjectId,
   scenes,
   headers,
 }: {
-  projectId: string;
+  studioProjectId: string;
   scenes: StudioScene[];
   headers: Record<string, string>;
 }): Promise<{ patched: number; failed: number }> {
@@ -20,15 +20,13 @@ export async function prepareScenesForSlideshowRender({
 
   await Promise.all(
     eligible.map(async (scene) => {
-      const sceneKey = scene.id ?? String(scene.sequence);
       try {
         const { res } = await patchProjectScene({
-          projectId,
-          sceneId: sceneKey,
+          projectId: studioProjectId,
+          sceneNumber: scene.sequence,
           patch: {
             approvalStatus: "approved",
             renderReadiness: "ready",
-            status: "completed",
           },
           headers,
         });

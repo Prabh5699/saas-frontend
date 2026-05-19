@@ -6,29 +6,17 @@ export type RenderSlideshowBody = {
   includeNarration?: boolean;
   voiceId?: string;
   includeMusic?: boolean;
-  /** Legacy / bridge flags when backend supports skipping readiness gate */
   skipRenderReadinessCheck?: boolean;
-  skipRenderReadiness?: boolean;
-  forceRender?: boolean;
 };
 
-export async function listLegacyImageProjects(token: string) {
-  return apiFetch(LEGACY_IMAGE_ROUTES.list, {
-    headers: { Authorization: `Bearer ${token}` },
-  });
-}
-
-export async function searchLegacyImageProjects({
-  query,
-  token,
-}: {
-  query: string;
-  token: string;
-}) {
-  return apiFetch(LEGACY_IMAGE_ROUTES.search(query), {
-    headers: { Authorization: `Bearer ${token}` },
-  });
-}
+export type GenerateImagesBody = {
+  prompt: string;
+  sceneCount: number;
+  purpose?: string;
+  templateKey?: string;
+  voiceProfileKey?: string;
+  async?: boolean;
+};
 
 export async function getLegacyImageProject({
   id,
@@ -92,20 +80,29 @@ export async function regenerateLegacyImageScene({
 export async function generateLegacyImages({
   prompt,
   sceneCount,
+  templateKey,
+  voiceProfileKey,
+  purpose = "cinematic",
+  async = true,
   headers,
-}: {
-  prompt: string;
-  sceneCount: number;
-  headers: Record<string, string>;
-}) {
+}: GenerateImagesBody & { headers: Record<string, string> }) {
+  const body: Record<string, unknown> = {
+    prompt,
+    sceneCount,
+    purpose,
+    async,
+  };
+  if (templateKey) body.templateKey = templateKey;
+  if (voiceProfileKey) body.voiceProfileKey = voiceProfileKey;
+
   return apiFetch(LEGACY_IMAGE_ROUTES.generate, {
     method: "POST",
     headers: { ...headers },
-    body: JSON.stringify({ prompt, sceneCount, async: true }),
+    body: JSON.stringify(body),
   });
 }
 
-/** Slideshow video; poll project detail for videoStatus / videoUrl. */
+/** Queue FFmpeg render; poll `GET /api/images/:id` for videoStatus / videoUrl. */
 export async function renderLegacySlideshowVideo({
   projectId,
   body,

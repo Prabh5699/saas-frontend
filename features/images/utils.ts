@@ -7,6 +7,7 @@ import {
   studioSceneToLegacyImage,
 } from "@/features/studio/adapters/legacy-images";
 import { LAST_PROJECT_STORAGE_KEY } from "@/features/studio/constants";
+import type { StudioTemplate } from "@/features/studio/types";
 import type {
   ImageProject,
   ImagesProjectResponse,
@@ -135,11 +136,29 @@ export async function downloadImage(url: string, sceneNumber: number) {
   }
 }
 
-export function historyProjectId(p: ImageProject): string | null {
-  const raw = p.projectId ?? p._id ?? p.id;
-  if (typeof raw === "string") return raw;
+/** Image project id for poll / render / WebSocket / favorite / delete. */
+export function historyImageProjectId(p: ImageProject): string | null {
+  if (p.imagePipelineLinked === false) return null;
+  const raw = p.legacyImageProjectId ?? p.projectId ?? p._id;
+  if (typeof raw === "string" && raw) return raw;
   if (typeof raw === "number") return String(raw);
   return null;
+}
+
+export function historyCanOpenImagePipeline(p: ImageProject): boolean {
+  return historyImageProjectId(p) != null;
+}
+
+/** Studio `projects.id` for PATCH scenes. */
+export function historyStudioProjectId(p: ImageProject): string | null {
+  const raw = p.studioProjectId;
+  if (typeof raw === "string" && raw) return raw;
+  return null;
+}
+
+/** @deprecated Use `historyImageProjectId` */
+export function historyProjectId(p: ImageProject): string | null {
+  return historyImageProjectId(p);
 }
 
 export function historyProjectIsFavorite(p: ImageProject): boolean {
@@ -171,12 +190,54 @@ export function historyCreatedTime(p: ImageProject): number {
 }
 
 export function historyFirstThumb(p: ImageProject): string | null {
-  return normalizeImageUrl(p.thumbnail);
+  const row = p as ImageProject & {
+    thumbnailUrl?: string;
+    thumbnail_url?: string;
+  };
+  return normalizeImageUrl(
+    p.thumbnail ?? row.thumbnailUrl ?? row.thumbnail_url
+  );
 }
 
 export function historyPromptLabel(p: ImageProject): string {
   const t = p.prompt;
   return typeof t === "string" ? t : "";
+}
+
+export function formatTemplateKey(key: string): string {
+  return key
+    .replace(/_/g, " ")
+    .replace(/\b\w/g, (c) => c.toUpperCase());
+}
+
+export function historyTemplateLabel(
+  p: ImageProject,
+  templates: StudioTemplate[] = []
+): string | null {
+  const key = p.templateKey;
+  if (!key || typeof key !== "string") return null;
+  const match = templates.find((t) => t.key === key);
+  return match?.name ?? formatTemplateKey(key);
+}
+
+export function historySceneCountLabel(p: ImageProject): string | null {
+  const total = p.totalScenes ?? p.total_scenes;
+  if (typeof total !== "number" || total <= 0) return null;
+  const completed = p.completedScenes ?? p.completed_scenes;
+  if (typeof completed === "number") {
+    return `${completed}/${total} scenes`;
+  }
+  return `${total} scenes`;
+}
+
+export function historyVideoStatusLabel(p: ImageProject): string | null {
+  const raw = p.videoStatus;
+  if (!raw || typeof raw !== "string") return null;
+  const s = raw.toLowerCase();
+  if (s === "completed") return "Video ready";
+  if (s === "processing" || s === "queued") return "Rendering video";
+  if (s === "failed") return "Video failed";
+  return null;
 }
 
 export function historyProgressPercent(p: ImageProject): number | null {

@@ -52,9 +52,31 @@ export function extractSummaryThumbnail(
   row: Record<string, unknown>
 ): string | null {
   const direct = normalizeAssetUrl(
-    row.thumbnail ?? row.thumbnailUrl ?? row.thumbnail_url ?? row.coverUrl
+    row.thumbnail ??
+      row.thumbnailUrl ??
+      row.thumbnail_url ??
+      row.coverUrl ??
+      row.cover_url ??
+      row.coverImageUrl ??
+      row.cover_image_url ??
+      row.previewUrl ??
+      row.preview_url ??
+      row.previewImageUrl ??
+      row.preview_image_url ??
+      row.posterUrl ??
+      row.poster_url ??
+      row.firstImageUrl ??
+      row.first_image_url
   );
   if (direct) return direct;
+
+  const storyboard = row.storyboard;
+  if (storyboard && typeof storyboard === "object" && storyboard !== null) {
+    const fromStoryboard = extractSummaryThumbnail(
+      storyboard as Record<string, unknown>
+    );
+    if (fromStoryboard) return fromStoryboard;
+  }
 
   for (const key of ["scenes", "images"]) {
     const list = row[key];

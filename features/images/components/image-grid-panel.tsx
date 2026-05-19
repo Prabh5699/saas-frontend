@@ -2,7 +2,10 @@ import { Badge } from "@/components/ui/badge";
 import { memo } from "react";
 import { ProgressCard } from "@/components/ui/progress-card";
 import type { ImagesStudioState } from "../hooks/use-images-studio";
+import { DurationPresets } from "./duration-presets";
 import { ImageIcon } from "./icons";
+import { ImageSceneStrip } from "./image-scene-strip";
+import { VideoRenderStatus } from "./video-render-status";
 
 type ImageGridPanelProps = Pick<
   ImagesStudioState,
@@ -28,7 +31,14 @@ type ImageGridPanelProps = Pick<
   | "setSlideshowIncludeMusic"
   | "slideshowVoiceId"
   | "setSlideshowVoiceId"
+  | "skipRenderReadinessCheck"
+  | "setSkipRenderReadinessCheck"
   | "handleCreateSlideshowVideo"
+  | "studioProjectId"
+  | "scenes"
+  | "motionPresets"
+  | "patchingScene"
+  | "handlePatchScene"
 >;
 
 function ImageGridPanelInner({
@@ -54,12 +64,24 @@ function ImageGridPanelInner({
   setSlideshowIncludeMusic,
   slideshowVoiceId,
   setSlideshowVoiceId,
+  skipRenderReadinessCheck,
+  setSkipRenderReadinessCheck,
   handleCreateSlideshowVideo,
+  studioProjectId,
+  scenes,
+  motionPresets,
+  patchingScene,
+  handlePatchScene,
 }: ImageGridPanelProps) {
-  const hasImages = sortedImages.some((i) => Boolean(i.imageUrl));
+  const completedScenes = sortedImages.filter((i) => Boolean(i.imageUrl)).length;
+  const hasImages = completedScenes > 0;
   const videoBusy =
     (videoStatus ?? "").toLowerCase() === "queued" ||
     (videoStatus ?? "").toLowerCase() === "processing";
+  const videoCompleted =
+    (videoStatus ?? "").toLowerCase() === "completed" && Boolean(videoUrl);
+  const showVideoSection =
+    projectId !== null && hasImages && !projectFailed;
 
   return (
     <div className="relative flex min-h-[320px] flex-col lg:min-h-[480px] lg:sticky lg:top-6 lg:self-start">
@@ -67,7 +89,7 @@ function ImageGridPanelInner({
       <div className="relative flex max-h-[calc(100vh-140px)] min-h-[inherit] flex-col overflow-hidden rounded-2xl border border-white/[0.08] bg-zinc-950/40 shadow-[0_24px_80px_-20px_rgb(0_0_0/0.5)] backdrop-blur-xl">
         <div className="flex flex-col gap-2 border-b border-white/[0.06] px-4 py-3 sm:flex-row sm:items-center sm:justify-between sm:px-5">
           <div className="flex flex-wrap items-center gap-2">
-            <span className="text-xs font-medium uppercase tracking-wider text-zinc-500">
+            <span className="text-xs font-semibold uppercase tracking-[0.2em] text-violet-300/80">
               Live grid
             </span>
             {projectFailed ? (
@@ -99,16 +121,23 @@ function ImageGridPanelInner({
           </div>
         </div>
 
-        {projectId !== null && progress >= 100 && !projectFailed ? (
+        {showVideoSection ? (
           <div className="border-b border-white/[0.06] px-4 py-3 sm:px-5">
+            <VideoRenderStatus
+              videoStatus={videoStatus}
+              videoError={videoError}
+              videoUrl={videoUrl}
+              videoRenderLoading={videoRenderLoading}
+            />
+
             {videoUrl ? (
               <div className="space-y-2">
-                <p className="text-xs font-medium uppercase tracking-wider text-zinc-500">
-                  Slideshow video
+                <p className="text-xs font-semibold uppercase tracking-[0.2em] text-violet-300/80">
+                  Your video
                 </p>
                 <video
                   controls
-                  className="max-h-[min(50vh,360px)] w-full rounded-lg border border-white/[0.08] bg-black/40"
+                  className="max-h-[min(50vh,360px)] w-full rounded-xl border border-white/[0.08] bg-black/40"
                   src={videoUrl}
                 />
               </div>
@@ -124,10 +153,30 @@ function ImageGridPanelInner({
               <p className="text-sm text-zinc-400">Rendering video…</p>
             ) : null}
 
-            {canCreateSlideshow ? (
+            {canCreateSlideshow && !videoCompleted ? (
               <div className={videoUrl || videoError || videoBusy ? "mt-3" : ""}>
+                <label className="mb-3 flex cursor-pointer items-center gap-2 text-xs text-zinc-300">
+                  <input
+                    type="checkbox"
+                    checked={skipRenderReadinessCheck}
+                    onChange={(e) =>
+                      setSkipRenderReadinessCheck(e.target.checked)
+                    }
+                    className="h-3.5 w-3.5 rounded border-white/20 bg-zinc-900 text-violet-500 focus:ring-violet-500/40"
+                  />
+                  Include all scenes
+                </label>
+
+                <p className="mb-2 text-xs font-medium text-zinc-400">
+                  Video length
+                </p>
+                <DurationPresets
+                  value={slideshowVideoDuration}
+                  onChange={setSlideshowVideoDuration}
+                  className="mb-2"
+                />
                 <label className="mb-2 block text-xs font-medium text-zinc-400">
-                  Video length (seconds)
+                  Custom seconds
                   <input
                     type="number"
                     min={1}
@@ -194,13 +243,23 @@ function ImageGridPanelInner({
                   type="button"
                   onClick={() => void handleCreateSlideshowVideo()}
                   disabled={videoRenderLoading}
-                  className="rounded-lg border border-violet-500/30 bg-violet-500/15 px-3 py-2 text-xs font-medium text-violet-100 transition hover:border-violet-500/50 hover:bg-violet-500/25 focus:outline-none focus-visible:ring-2 focus-visible:ring-violet-500/50 disabled:cursor-not-allowed disabled:opacity-50"
+                  className="rounded-xl bg-gradient-to-r from-violet-600 to-fuchsia-600 px-4 py-2.5 text-sm font-semibold text-white shadow-lg shadow-violet-600/20 transition hover:brightness-110 focus:outline-none focus-visible:ring-2 focus-visible:ring-violet-500/50 disabled:cursor-not-allowed disabled:opacity-50"
                 >
-                  {videoRenderLoading ? "Starting…" : "Create video from these images"}
+                  {videoRenderLoading ? "Starting…" : "Render video"}
                 </button>
               </div>
             ) : null}
           </div>
+        ) : null}
+
+        {showVideoSection ? (
+          <ImageSceneStrip
+            scenes={scenes}
+            motionPresets={motionPresets}
+            studioProjectId={studioProjectId}
+            patchingScene={patchingScene}
+            onPatchScene={handlePatchScene}
+          />
         ) : null}
 
         <div
@@ -220,7 +279,7 @@ function ImageGridPanelInner({
               {sortedImages.map((img) => (
                 <div
                   key={img.scene_number}
-                  className="relative overflow-hidden rounded-xl border border-white/[0.06] bg-zinc-900/60 shadow-[0_10px_30px_-12px_rgb(0_0_0/0.5)] transition-[opacity,transform] duration-300 ease-out"
+                  className="group relative aspect-video overflow-hidden rounded-xl border border-white/[0.06] bg-zinc-900/60 shadow-[0_10px_30px_-12px_rgb(0_0_0/0.5)] transition duration-300 ease-out hover:scale-[1.02]"
                 >
                   <div className="pointer-events-none absolute left-2 top-2 z-20 rounded-md bg-black/55 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-white/85 backdrop-blur-sm">
                     Scene {img.scene_number}
@@ -231,10 +290,10 @@ function ImageGridPanelInner({
                       src={img.imageUrl}
                       alt={`Scene ${img.scene_number}`}
                       onClick={() => setPreviewScene(img.scene_number)}
-                      className="block h-44 w-full cursor-pointer object-cover transition duration-200 hover:brightness-110 sm:h-48 md:h-44 lg:h-48"
+                      className="h-full w-full cursor-pointer object-cover transition duration-200 group-hover:brightness-110"
                     />
                   ) : (
-                    <div className="flex h-44 w-full animate-pulse items-center justify-center bg-zinc-800/60 text-[11px] font-medium uppercase tracking-wide text-zinc-500 sm:h-48 md:h-44 lg:h-48">
+                    <div className="flex h-full min-h-[120px] w-full animate-pulse items-center justify-center bg-zinc-800/60 text-[11px] font-medium uppercase tracking-wide text-zinc-500">
                       Generating...
                     </div>
                   )}
@@ -246,11 +305,23 @@ function ImageGridPanelInner({
               <div className="mb-5 flex h-20 w-20 items-center justify-center rounded-2xl border border-white/[0.07] bg-white/[0.03] text-zinc-600">
                 <ImageIcon className="h-11 w-11" />
               </div>
-              <p className="text-sm font-medium text-zinc-300">No images yet</p>
-              <p className="mt-2 max-w-sm text-xs leading-relaxed text-zinc-500">
-                Add a prompt on the left and hit generate. Scenes will appear
-                here as they finish.
+              <p className="text-sm font-medium text-zinc-300">
+                Scenes will appear here
               </p>
+              <ol className="mt-4 max-w-xs space-y-2 text-left text-xs leading-relaxed text-zinc-500">
+                <li className="flex gap-2">
+                  <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-violet-500/20 text-[10px] font-bold text-violet-300">
+                    1
+                  </span>
+                  Pick a template and write a prompt
+                </li>
+                <li className="flex gap-2">
+                  <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-violet-500/20 text-[10px] font-bold text-violet-300">
+                    2
+                  </span>
+                  Generate → scenes appear here → Render video
+                </li>
+              </ol>
             </div>
           )}
         </div>
