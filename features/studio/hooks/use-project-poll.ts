@@ -105,6 +105,16 @@ export function useProjectPoll({
         if (patch.progress != null && patch.progress >= 100) {
           onCompleteGenerationRef.current();
         }
+
+        const hasVideo = Boolean(patch.videoUrl);
+        const videoState = (patch.videoStatus ?? "").toLowerCase();
+        if (
+          hasVideo ||
+          videoState === "completed" ||
+          videoState === "failed"
+        ) {
+          clearPollInterval();
+        }
       } catch (err) {
         const msg = getApiErrorMessage(err, "");
         if (msg && progressRefStable.current.current === 0) {

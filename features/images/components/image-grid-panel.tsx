@@ -1,10 +1,11 @@
-import { Badge } from "@/components/ui/badge";
-import { memo } from "react";
-import { ProgressCard } from "@/components/ui/progress-card";
+"use client";
+
+import { memo, useEffect, useRef, useState } from "react";
+import { StudioGenerationLoader } from "./studio-generation-loader";
 import type { ImagesStudioState } from "../hooks/use-images-studio";
-import { DurationPresets } from "./duration-presets";
-import { ImageIcon } from "./icons";
-import { ImageSceneStrip } from "./image-scene-strip";
+import { glassPanel, sectionLabel } from "../lib/studio-ui-styles";
+import { OutputOptionsModal } from "./output-options-modal";
+import { VideoPreviewModal } from "./video-preview-modal";
 import { VideoRenderStatus } from "./video-render-status";
 
 type ImageGridPanelProps = Pick<
@@ -13,9 +14,12 @@ type ImageGridPanelProps = Pick<
   | "progress"
   | "projectFailed"
   | "showLoader"
+  | "isGeneratingImages"
+  | "videoRenderInProgress"
   | "totalCost"
   | "sortedImages"
   | "scrollAreaRef"
+  | "previewScene"
   | "handleDownloadAll"
   | "setPreviewScene"
   | "videoUrl"
@@ -23,6 +27,8 @@ type ImageGridPanelProps = Pick<
   | "videoError"
   | "videoRenderLoading"
   | "canCreateSlideshow"
+  | "missingSceneNumbers"
+  | "imagesGenerationComplete"
   | "slideshowVideoDuration"
   | "setSlideshowVideoDuration"
   | "slideshowIncludeNarration"
@@ -38,17 +44,290 @@ type ImageGridPanelProps = Pick<
   | "scenes"
   | "motionPresets"
   | "patchingScene"
+  | "markingAllScenesReady"
   | "handlePatchScene"
+  | "handleMarkAllScenesReady"
 >;
+
+function fmtTime(sec: number) {
+  if (!Number.isFinite(sec) || sec < 0) return "0:00";
+  const m = Math.floor(sec / 60);
+  const s = Math.floor(sec % 60);
+  return `${m}:${s.toString().padStart(2, "0")}`;
+}
+
+function truncateCaption(text: string, max = 42) {
+  const t = text.trim();
+  if (t.length <= max) return t;
+  return `${t.slice(0, max).trim()}…`;
+}
+
+function storyboardThumbStyle(active: boolean) {
+  return {
+    position: "relative" as const,
+    width: 72,
+    height: 48,
+    borderRadius: 6,
+    overflow: "hidden" as const,
+    flexShrink: 0,
+    padding: 0,
+    cursor: "pointer" as const,
+    fontFamily: "inherit",
+    border: `1px solid ${active ? "rgba(129,140,248,0.55)" : "rgba(255,255,255,0.08)"}`,
+    boxShadow: active ? "0 0 0 2px rgba(99,102,241,0.35)" : "none",
+    background: "rgba(255,255,255,0.04)",
+  };
+}
+
+type PreviewPlayerProps = {
+  videoUrl: string | null;
+  heroImage: string | null;
+  caption: string;
+  durationSec: number;
+  onExpandVideo: (state: { currentTime: number; playing: boolean }) => void;
+  onExpandImage: () => void;
+  sortedImages: ImageGridPanelProps["sortedImages"];
+  setPreviewScene: (n: number) => void;
+};
+
+function PreviewPlayer({
+  videoUrl,
+  heroImage,
+  caption,
+  durationSec,
+  onExpandVideo,
+  onExpandImage,
+  sortedImages,
+  setPreviewScene,
+}: PreviewPlayerProps) {
+  const videoRef = useRef<HTMLVideoElement>(null);
+  const [playing, setPlaying] = useState(false);
+  const [currentTime, setCurrentTime] = useState(0);
+  const [videoDuration, setVideoDuration] = useState(durationSec);
+
+  useEffect(() => {
+    setVideoDuration(durationSec);
+  }, [durationSec]);
+
+  const totalDuration = videoUrl ? videoDuration : durationSec;
+  const progressPct =
+    totalDuration > 0
+      ? Math.min(100, (currentTime / totalDuration) * 100)
+      : 0;
+
+  const togglePlay = () => {
+    const v = videoRef.current;
+    if (v) {
+      if (v.paused) void v.play();
+      else v.pause();
+      return;
+    }
+    if (heroImage) {
+      const img = sortedImages.find((i) => i.imageUrl === heroImage);
+      if (img) setPreviewScene(img.scene_number);
+    }
+  };
+
+  const handleExpand = () => {
+    if (videoUrl) {
+      onExpandVideo({
+        currentTime: videoRef.current?.currentTime ?? currentTime,
+        playing,
+      });
+      return;
+    }
+    onExpandImage();
+  };
+
+  return (
+    <div style={{ margin: 12, position: "relative" }}>
+      <div
+        className="studio-preview-frame"
+        style={{
+          borderRadius: 12,
+          overflow: "hidden",
+          aspectRatio: "16/9",
+          background:
+            "linear-gradient(160deg, #050c2a 0%, #0f172a 50%, #1e1b4b 100%)",
+          border: "1px solid rgba(255,255,255,0.1)",
+          boxShadow:
+            "0 0 48px rgba(99,102,241,0.2), 0 0 80px -20px rgba(34,211,238,0.12), 0 24px 64px rgba(0,0,0,0.55)",
+          position: "relative",
+        }}
+      >
+        {videoUrl ? (
+          <video
+            ref={videoRef}
+            src={videoUrl}
+            onPlay={() => setPlaying(true)}
+            onPause={() => setPlaying(false)}
+            onTimeUpdate={() =>
+              setCurrentTime(videoRef.current?.currentTime ?? 0)
+            }
+            onLoadedMetadata={() => {
+              const d = videoRef.current?.duration;
+              if (d && Number.isFinite(d)) setVideoDuration(d);
+            }}
+            style={{
+              width: "100%",
+              height: "100%",
+              objectFit: "cover",
+              display: "block",
+            }}
+          />
+        ) : heroImage ? (
+          <img
+            src={heroImage}
+            alt=""
+            style={{
+              width: "100%",
+              height: "100%",
+              objectFit: "cover",
+              display: "block",
+            }}
+          />
+        ) : (
+          <div
+            style={{
+              width: "100%",
+              height: "100%",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+            }}
+          >
+            <p style={{ fontSize: 12, color: "rgba(96,120,200,0.35)" }}>
+              Preview appears here
+            </p>
+          </div>
+        )}
+
+        {(heroImage || videoUrl) && caption ? (
+          <div
+            style={{
+              position: "absolute",
+              bottom: 0,
+              left: 0,
+              right: 0,
+              padding: "32px 14px 12px",
+              background:
+                "linear-gradient(to top, rgba(6,10,26,0.95) 0%, rgba(15,23,42,0.5) 45%, transparent 100%)",
+              fontSize: 11,
+              color: "rgba(255,255,255,0.5)",
+              pointerEvents: "none",
+            }}
+          >
+            {caption}
+          </div>
+        ) : null}
+      </div>
+
+      <div
+        style={{
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "space-between",
+          padding: "10px 4px 4px",
+          gap: 8,
+        }}
+      >
+        <button
+          type="button"
+          className="studio-icon-btn"
+          onClick={togglePlay}
+          aria-label={playing ? "Pause" : "Play"}
+          style={{
+            width: 32,
+            height: 32,
+            borderRadius: "50%",
+            background:
+              "linear-gradient(135deg, rgba(99,102,241,0.35), rgba(59,130,246,0.2))",
+            border: "1px solid rgba(129,140,248,0.35)",
+            color: "#e0e7ff",
+            cursor: "pointer",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            fontSize: 12,
+            flexShrink: 0,
+            fontFamily: "inherit",
+          }}
+        >
+          {playing ? "❚❚" : "▶"}
+        </button>
+
+        <div
+          style={{
+            flex: 1,
+            height: 3,
+            background: "rgba(255,255,255,0.08)",
+            borderRadius: 999,
+            overflow: "hidden",
+          }}
+        >
+          <div
+            style={{
+              width: `${progressPct}%`,
+              height: "100%",
+              background:
+                "linear-gradient(90deg, #6366f1, #38bdf8, #818cf8)",
+              borderRadius: 999,
+              transition: "width 200ms linear",
+              boxShadow: "0 0 12px rgba(99,102,241,0.5)",
+            }}
+          />
+        </div>
+
+        <span
+          style={{
+            fontSize: 10,
+            color: "rgba(96,120,200,0.5)",
+            flexShrink: 0,
+            fontVariantNumeric: "tabular-nums",
+          }}
+        >
+          {fmtTime(currentTime)} / {fmtTime(totalDuration)}
+        </span>
+
+        <button
+          type="button"
+          className="studio-icon-btn"
+          onClick={handleExpand}
+          aria-label={videoUrl ? "Expand video" : "Expand preview"}
+          style={{
+            width: 28,
+            height: 28,
+            borderRadius: 8,
+            background: "rgba(255,255,255,0.05)",
+            border: "1px solid rgba(255,255,255,0.1)",
+            color: "rgba(199,210,254,0.75)",
+            cursor: "pointer",
+            fontSize: 11,
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            flexShrink: 0,
+            fontFamily: "inherit",
+          }}
+        >
+          ⛶
+        </button>
+      </div>
+    </div>
+  );
+}
 
 function ImageGridPanelInner({
   projectId,
   progress,
   projectFailed,
   showLoader,
+  isGeneratingImages,
+  videoRenderInProgress,
   totalCost,
   sortedImages,
   scrollAreaRef,
+  previewScene,
   handleDownloadAll,
   setPreviewScene,
   videoUrl,
@@ -56,6 +335,8 @@ function ImageGridPanelInner({
   videoError,
   videoRenderLoading,
   canCreateSlideshow,
+  missingSceneNumbers,
+  imagesGenerationComplete,
   slideshowVideoDuration,
   setSlideshowVideoDuration,
   slideshowIncludeNarration,
@@ -71,262 +352,334 @@ function ImageGridPanelInner({
   scenes,
   motionPresets,
   patchingScene,
+  markingAllScenesReady,
   handlePatchScene,
+  handleMarkAllScenesReady,
 }: ImageGridPanelProps) {
-  const completedScenes = sortedImages.filter((i) => Boolean(i.imageUrl)).length;
-  const hasImages = completedScenes > 0;
-  const videoBusy =
-    (videoStatus ?? "").toLowerCase() === "queued" ||
-    (videoStatus ?? "").toLowerCase() === "processing";
-  const videoCompleted =
+  const [showOptions, setShowOptions] = useState(false);
+  const [videoExpanded, setVideoExpanded] = useState(false);
+  const [expandedVideoTime, setExpandedVideoTime] = useState(0);
+  const [activeScene, setActiveScene] = useState<number | null>(null);
+  const completed = sortedImages.filter((i) => Boolean(i.imageUrl)).length;
+  const hasImages = completed > 0;
+  const focusedScene = previewScene ?? activeScene;
+  const heroImage =
+    sortedImages.find((i) => i.scene_number === focusedScene)?.imageUrl ??
+    sortedImages.find((i) => i.imageUrl)?.imageUrl ??
+    null;
+  const videoDone =
     (videoStatus ?? "").toLowerCase() === "completed" && Boolean(videoUrl);
-  const showVideoSection =
-    projectId !== null && hasImages && !projectFailed;
+  const canRender =
+    projectId !== null &&
+    hasImages &&
+    !projectFailed &&
+    canCreateSlideshow &&
+    !videoDone;
+
+  const sceneMeta = scenes.find((s) => s.sequence === focusedScene) ?? scenes[0];
+  const caption = truncateCaption(
+    sceneMeta?.narrationOverride ?? sceneMeta?.prompt ?? ""
+  );
+
+  const handleExpandVideo = (state: {
+    currentTime: number;
+    playing: boolean;
+  }) => {
+    setExpandedVideoTime(state.currentTime);
+    setVideoExpanded(true);
+  };
+
+  const handleExpandImage = () => {
+    const n =
+      focusedScene ??
+      sortedImages.find((i) => i.imageUrl)?.scene_number ??
+      null;
+    if (n != null) setPreviewScene(n);
+  };
 
   return (
-    <div className="relative flex min-h-[320px] flex-col lg:min-h-[480px] lg:sticky lg:top-6 lg:self-start">
-      <div className="absolute -inset-px rounded-2xl bg-gradient-to-br from-fuchsia-500/15 via-transparent to-cyan-500/10 opacity-80 blur-[1px]" />
-      <div className="relative flex max-h-[calc(100vh-140px)] min-h-[inherit] flex-col overflow-hidden rounded-2xl border border-white/[0.08] bg-zinc-950/40 shadow-[0_24px_80px_-20px_rgb(0_0_0/0.5)] backdrop-blur-xl">
-        <div className="flex flex-col gap-2 border-b border-white/[0.06] px-4 py-3 sm:flex-row sm:items-center sm:justify-between sm:px-5">
-          <div className="flex flex-wrap items-center gap-2">
-            <span className="text-xs font-semibold uppercase tracking-[0.2em] text-violet-300/80">
-              Live grid
-            </span>
-            {projectFailed ? (
-              <Badge variant="failed">Failed</Badge>
-            ) : progress >= 100 ? (
-              <Badge variant="done">Ready</Badge>
-            ) : showLoader ? (
-              <Badge variant="processing">Processing</Badge>
-            ) : null}
-          </div>
-          <div className="flex flex-wrap items-center gap-2 sm:justify-end">
-            {hasImages ? (
-              <button
-                type="button"
-                onClick={handleDownloadAll}
-                className="rounded-lg border border-white/15 bg-white/[0.04] px-3 py-1.5 text-xs font-medium text-zinc-200 transition hover:border-violet-500/35 hover:bg-violet-500/10 hover:text-white focus:outline-none focus-visible:ring-2 focus-visible:ring-violet-500/50"
-              >
-                Download all images
-              </button>
-            ) : null}
-            {totalCost != null ? (
-              <span className="text-xs text-zinc-500">
-                Total Cost:{" "}
-                <span className="font-medium text-zinc-200">
-                  ${totalCost.toFixed(2)}
-                </span>
-              </span>
-            ) : null}
-          </div>
-        </div>
+    <aside
+      className="studio-panel"
+      style={{
+        ...glassPanel,
+        width: 300,
+        minWidth: 300,
+        height: "100%",
+        display: "flex",
+        flexDirection: "column",
+        overflow: "hidden",
+      }}
+    >
+      <div
+        style={{
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "space-between",
+          padding: "12px 16px",
+          borderBottom: "1px solid rgba(255,255,255,0.05)",
+          flexShrink: 0,
+        }}
+      >
+        <span
+          style={{
+            fontSize: 9,
+            fontWeight: 700,
+            letterSpacing: "0.14em",
+            textTransform: "uppercase",
+            color: "rgba(96,120,200,0.35)",
+          }}
+        >
+          Preview
+        </span>
+        {totalCost != null ? (
+          <span style={{ fontSize: 11, color: "rgba(96,120,200,0.4)" }}>
+            ${totalCost.toFixed(2)}
+          </span>
+        ) : (
+          <span />
+        )}
+        {hasImages ? (
+          <button
+            type="button"
+            className="studio-btn-ghost"
+            onClick={handleDownloadAll}
+            style={{
+              padding: "5px 11px",
+              borderRadius: 8,
+              background: "rgba(99,102,241,0.15)",
+              border: "1px solid rgba(129,140,248,0.35)",
+              fontSize: 11,
+              color: "#a5b4fc",
+              fontWeight: 500,
+              cursor: "pointer",
+              fontFamily: "inherit",
+            }}
+          >
+            ↓ Download
+          </button>
+        ) : (
+          <span />
+        )}
+      </div>
 
-        {showVideoSection ? (
-          <div className="border-b border-white/[0.06] px-4 py-3 sm:px-5">
-            <VideoRenderStatus
-              videoStatus={videoStatus}
-              videoError={videoError}
-              videoUrl={videoUrl}
-              videoRenderLoading={videoRenderLoading}
-            />
+      <div style={{ position: "relative", flexShrink: 0 }}>
+        <PreviewPlayer
+          videoUrl={videoUrl}
+          heroImage={heroImage}
+          caption={caption}
+          durationSec={slideshowVideoDuration}
+          onExpandVideo={handleExpandVideo}
+          onExpandImage={handleExpandImage}
+          sortedImages={sortedImages}
+          setPreviewScene={setPreviewScene}
+        />
 
-            {videoUrl ? (
-              <div className="space-y-2">
-                <p className="text-xs font-semibold uppercase tracking-[0.2em] text-violet-300/80">
-                  Your video
-                </p>
-                <video
-                  controls
-                  className="max-h-[min(50vh,360px)] w-full rounded-xl border border-white/[0.08] bg-black/40"
-                  src={videoUrl}
-                />
-              </div>
-            ) : null}
-
-            {videoError && !videoUrl ? (
-              <p className="text-sm text-red-400/90" role="alert">
-                {videoError}
-              </p>
-            ) : null}
-
-            {videoBusy && !videoUrl ? (
-              <p className="text-sm text-zinc-400">Rendering video…</p>
-            ) : null}
-
-            {canCreateSlideshow && !videoCompleted ? (
-              <div className={videoUrl || videoError || videoBusy ? "mt-3" : ""}>
-                <label className="mb-3 flex cursor-pointer items-center gap-2 text-xs text-zinc-300">
-                  <input
-                    type="checkbox"
-                    checked={skipRenderReadinessCheck}
-                    onChange={(e) =>
-                      setSkipRenderReadinessCheck(e.target.checked)
-                    }
-                    className="h-3.5 w-3.5 rounded border-white/20 bg-zinc-900 text-violet-500 focus:ring-violet-500/40"
-                  />
-                  Include all scenes
-                </label>
-
-                <p className="mb-2 text-xs font-medium text-zinc-400">
-                  Video length
-                </p>
-                <DurationPresets
-                  value={slideshowVideoDuration}
-                  onChange={setSlideshowVideoDuration}
-                  className="mb-2"
-                />
-                <label className="mb-2 block text-xs font-medium text-zinc-400">
-                  Custom seconds
-                  <input
-                    type="number"
-                    min={1}
-                    max={86400}
-                    value={slideshowVideoDuration}
-                    onChange={(e) => {
-                      const v = e.target.value;
-                      if (v === "") return;
-                      const n = parseInt(v, 10);
-                      if (Number.isNaN(n)) return;
-                      setSlideshowVideoDuration(Math.min(86400, Math.max(1, n)));
-                    }}
-                    className="mt-1.5 block w-full max-w-[180px] rounded-lg border border-white/[0.12] bg-zinc-950/80 px-3 py-2 text-sm text-zinc-100 outline-none transition focus:border-violet-500/40 focus:ring-1 focus:ring-violet-500/30"
-                  />
-                </label>
-                <p className="mb-3 text-[11px] text-zinc-500">
-                  Required for narrated render (1–86,400 seconds).
-                </p>
-
-                <div className="mb-3 flex flex-col gap-2.5">
-                  <label className="flex cursor-pointer items-center gap-2 text-xs text-zinc-300">
-                    <input
-                      type="checkbox"
-                      checked={slideshowIncludeNarration}
-                      onChange={(e) =>
-                        setSlideshowIncludeNarration(e.target.checked)
-                      }
-                      className="h-3.5 w-3.5 rounded border-white/20 bg-zinc-900 text-violet-500 focus:ring-violet-500/40"
-                    />
-                    Include narration
-                  </label>
-                  <label className="flex cursor-pointer items-center gap-2 text-xs text-zinc-300">
-                    <input
-                      type="checkbox"
-                      checked={slideshowIncludeMusic}
-                      onChange={(e) =>
-                        setSlideshowIncludeMusic(e.target.checked)
-                      }
-                      className="h-3.5 w-3.5 rounded border-white/20 bg-zinc-900 text-violet-500 focus:ring-violet-500/40"
-                    />
-                    Include music
-                  </label>
-                </div>
-
-                <label className="mb-3 block text-xs font-medium text-zinc-400">
-                  Voice ID
-                  <input
-                    type="text"
-                    value={slideshowVoiceId}
-                    onChange={(e) => setSlideshowVoiceId(e.target.value)}
-                    placeholder="ElevenLabs voice id…"
-                    className="mt-1.5 block w-full max-w-[280px] rounded-lg border border-white/[0.12] bg-zinc-950/80 px-3 py-2 text-sm text-zinc-100 outline-none placeholder:text-zinc-600 focus:border-violet-500/40 focus:ring-1 focus:ring-violet-500/30"
-                  />
-                  <span className="mt-1 block font-normal text-[11px] leading-snug text-zinc-500">
-                    Pre-filled from{" "}
-                    <code className="rounded bg-white/[0.06] px-1 py-0.5 text-[10px] text-zinc-400">
-                      NEXT_PUBLIC_SLIDESHOW_VOICE_ID
-                    </code>
-                    . On generate, the request uses what you typed, or that env value if the field is empty.
-                  </span>
-                </label>
-
-                <button
-                  type="button"
-                  onClick={() => void handleCreateSlideshowVideo()}
-                  disabled={videoRenderLoading}
-                  className="rounded-xl bg-gradient-to-r from-violet-600 to-fuchsia-600 px-4 py-2.5 text-sm font-semibold text-white shadow-lg shadow-violet-600/20 transition hover:brightness-110 focus:outline-none focus-visible:ring-2 focus-visible:ring-violet-500/50 disabled:cursor-not-allowed disabled:opacity-50"
-                >
-                  {videoRenderLoading ? "Starting…" : "Render video"}
-                </button>
-              </div>
-            ) : null}
-          </div>
-        ) : null}
-
-        {showVideoSection ? (
-          <ImageSceneStrip
-            scenes={scenes}
-            motionPresets={motionPresets}
-            studioProjectId={studioProjectId}
-            patchingScene={patchingScene}
-            onPatchScene={handlePatchScene}
+        {isGeneratingImages ? (
+          <StudioGenerationLoader
+            progress={progress}
+            status="Generating your scenes"
+            substatus="AI is painting each frame"
+            sceneCompleted={completed}
+            sceneTotal={sortedImages.length || undefined}
+            variant="images"
           />
         ) : null}
 
-        <div
-          ref={scrollAreaRef}
-          className="relative flex flex-1 flex-col gap-6 overflow-y-auto p-4 sm:p-6"
-        >
-          {projectId !== null && progress < 100 && !projectFailed ? (
-            <ProgressCard
-              progress={progress}
-              status="Generating images..."
-              className="border-white/[0.08] bg-zinc-950/40 text-left shadow-none"
-            />
-          ) : null}
-
-          {sortedImages.length > 0 ? (
-            <div className="grid grid-cols-2 gap-4 md:grid-cols-3">
-              {sortedImages.map((img) => (
-                <div
-                  key={img.scene_number}
-                  className="group relative aspect-video overflow-hidden rounded-xl border border-white/[0.06] bg-zinc-900/60 shadow-[0_10px_30px_-12px_rgb(0_0_0/0.5)] transition duration-300 ease-out hover:scale-[1.02]"
-                >
-                  <div className="pointer-events-none absolute left-2 top-2 z-20 rounded-md bg-black/55 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-white/85 backdrop-blur-sm">
-                    Scene {img.scene_number}
-                  </div>
-
-                  {img.imageUrl ? (
-                    <img
-                      src={img.imageUrl}
-                      alt={`Scene ${img.scene_number}`}
-                      onClick={() => setPreviewScene(img.scene_number)}
-                      className="h-full w-full cursor-pointer object-cover transition duration-200 group-hover:brightness-110"
-                    />
-                  ) : (
-                    <div className="flex h-full min-h-[120px] w-full animate-pulse items-center justify-center bg-zinc-800/60 text-[11px] font-medium uppercase tracking-wide text-zinc-500">
-                      Generating...
-                    </div>
-                  )}
-                </div>
-              ))}
-            </div>
-          ) : (
-            <div className="flex flex-1 flex-col items-center justify-center text-center">
-              <div className="mb-5 flex h-20 w-20 items-center justify-center rounded-2xl border border-white/[0.07] bg-white/[0.03] text-zinc-600">
-                <ImageIcon className="h-11 w-11" />
-              </div>
-              <p className="text-sm font-medium text-zinc-300">
-                Scenes will appear here
-              </p>
-              <ol className="mt-4 max-w-xs space-y-2 text-left text-xs leading-relaxed text-zinc-500">
-                <li className="flex gap-2">
-                  <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-violet-500/20 text-[10px] font-bold text-violet-300">
-                    1
-                  </span>
-                  Pick a template and write a prompt
-                </li>
-                <li className="flex gap-2">
-                  <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-violet-500/20 text-[10px] font-bold text-violet-300">
-                    2
-                  </span>
-                  Generate → scenes appear here → Render video
-                </li>
-              </ol>
-            </div>
-          )}
-        </div>
+        {videoRenderInProgress && !videoUrl ? (
+          <StudioGenerationLoader
+            progress={null}
+            status="Rendering your video"
+            substatus="This usually takes about a minute"
+            variant="video"
+          />
+        ) : null}
       </div>
-    </div>
+
+      <div style={{ padding: "0 14px", flexShrink: 0 }}>
+        <VideoRenderStatus
+          videoStatus={videoStatus}
+          videoError={videoError}
+          videoUrl={videoUrl}
+          videoRenderLoading={videoRenderLoading || videoRenderInProgress}
+          hasImages={hasImages}
+          projectFailed={projectFailed}
+          showLoader={showLoader}
+        />
+      </div>
+
+      <div
+        ref={scrollAreaRef}
+        className="hide-scroll"
+        style={{
+          flex: 1,
+          overflowY: "auto",
+          overflowX: "hidden",
+          display: "flex",
+          flexDirection: "column",
+          minHeight: 0,
+        }}
+      >
+        {sortedImages.length > 0 ? (
+          <>
+            <div style={{ ...sectionLabel, padding: "12px 14px 8px" }}>
+              Storyboard
+            </div>
+            <div
+              style={{
+                display: "flex",
+                flexWrap: "wrap",
+                gap: 6,
+                padding: "0 14px 12px",
+                overflow: "hidden",
+              }}
+            >
+              {sortedImages.map((img) => {
+                const isActive =
+                  focusedScene === img.scene_number ||
+                  (!focusedScene &&
+                    img.scene_number ===
+                      sortedImages.find((s) => s.imageUrl)?.scene_number);
+                return (
+                  <button
+                    key={img.scene_number}
+                    type="button"
+                    disabled={!img.imageUrl}
+                    onClick={() => {
+                      if (!img.imageUrl) return;
+                      setActiveScene(img.scene_number);
+                      setPreviewScene(img.scene_number);
+                    }}
+                    className={
+                      isActive ? "studio-thumb studio-thumb--active" : "studio-thumb"
+                    }
+                    style={{
+                      ...storyboardThumbStyle(isActive),
+                      opacity: img.imageUrl ? 1 : 0.35,
+                      cursor: img.imageUrl ? "pointer" : "not-allowed",
+                    }}
+                  >
+                    {img.imageUrl ? (
+                      <img
+                        src={img.imageUrl}
+                        alt={`Scene ${img.scene_number}`}
+                        onError={(e) => {
+                          e.currentTarget.style.display = "none";
+                        }}
+                        style={{
+                          width: "100%",
+                          height: "100%",
+                          objectFit: "cover",
+                          display: "block",
+                        }}
+                      />
+                    ) : (
+                      <div
+                        style={{
+                          width: "100%",
+                          height: "100%",
+                          background: "rgba(255,255,255,0.04)",
+                        }}
+                      />
+                    )}
+                    <span
+                      style={{
+                        position: "absolute",
+                        bottom: 2,
+                        right: 2,
+                        fontSize: 10,
+                        fontWeight: 700,
+                        color: "#fff",
+                        background: "rgba(0,0,0,0.65)",
+                        borderRadius: 3,
+                        padding: "1px 5px",
+                        lineHeight: 1.3,
+                        minWidth: 14,
+                        textAlign: "center",
+                      }}
+                    >
+                      {img.scene_number}
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+          </>
+        ) : null}
+
+        {(canRender || (studioProjectId && hasImages)) && (
+          <div
+            style={{
+              padding: "12px 14px 14px",
+              borderTop: "1px solid rgba(255,255,255,0.06)",
+              marginTop: "auto",
+            }}
+          >
+            <button
+              type="button"
+              className="studio-btn-ghost"
+              onClick={() => setShowOptions(true)}
+              style={{
+                background:
+                  "linear-gradient(135deg, rgba(99,102,241,0.08), rgba(255,255,255,0.03))",
+                border: "1px solid rgba(255,255,255,0.1)",
+                borderRadius: 10,
+                padding: "10px 14px",
+                width: "100%",
+                cursor: "pointer",
+                fontSize: 12,
+                fontWeight: 500,
+                color: "rgba(199,210,254,0.8)",
+                letterSpacing: 0.02,
+                fontFamily: "inherit",
+              }}
+            >
+              Output options
+            </button>
+          </div>
+        )}
+      </div>
+
+      <VideoPreviewModal
+        open={videoExpanded}
+        onClose={() => setVideoExpanded(false)}
+        videoUrl={videoUrl}
+        caption={caption}
+        initialTime={expandedVideoTime}
+        autoPlay
+      />
+
+      <OutputOptionsModal
+        open={showOptions}
+        onClose={() => setShowOptions(false)}
+        canRender={canRender}
+        projectId={projectId}
+        projectFailed={projectFailed}
+        videoDone={videoDone}
+        imagesGenerationComplete={imagesGenerationComplete}
+        missingSceneNumbers={missingSceneNumbers}
+        studioProjectId={studioProjectId}
+        hasImages={hasImages}
+        scenes={scenes}
+        motionPresets={motionPresets}
+        patchingScene={patchingScene}
+        markingAllScenesReady={markingAllScenesReady}
+        handlePatchScene={handlePatchScene}
+        handleMarkAllScenesReady={handleMarkAllScenesReady}
+        slideshowVideoDuration={slideshowVideoDuration}
+        setSlideshowVideoDuration={setSlideshowVideoDuration}
+        slideshowIncludeNarration={slideshowIncludeNarration}
+        setSlideshowIncludeNarration={setSlideshowIncludeNarration}
+        slideshowIncludeMusic={slideshowIncludeMusic}
+        setSlideshowIncludeMusic={setSlideshowIncludeMusic}
+        slideshowVoiceId={slideshowVoiceId}
+        setSlideshowVoiceId={setSlideshowVoiceId}
+        skipRenderReadinessCheck={skipRenderReadinessCheck}
+        setSkipRenderReadinessCheck={setSkipRenderReadinessCheck}
+        videoRenderLoading={videoRenderLoading}
+        videoRenderInProgress={videoRenderInProgress}
+        onRender={handleCreateSlideshowVideo}
+      />
+    </aside>
   );
 }
 

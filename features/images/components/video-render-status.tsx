@@ -1,4 +1,3 @@
-import { Badge } from "@/components/ui/badge";
 import { memo } from "react";
 
 type VideoRenderStatusProps = {
@@ -6,80 +5,101 @@ type VideoRenderStatusProps = {
   videoError: string | null;
   videoUrl: string | null;
   videoRenderLoading: boolean;
+  hasImages?: boolean;
+  projectFailed?: boolean;
+  showLoader?: boolean;
 };
 
-function statusLabel(raw: string | null): string {
-  const s = (raw ?? "").toLowerCase();
-  if (s === "queued") return "Queued";
-  if (s === "processing") return "Processing";
-  if (s === "completed") return "Completed";
-  if (s === "failed") return "Failed";
-  if (!s) return "Starting";
-  return raw ?? "Unknown";
-}
+const pillBase = {
+  display: "inline-flex",
+  alignItems: "center",
+  gap: 6,
+  marginTop: 10,
+  padding: "4px 10px",
+  borderRadius: 999,
+  fontSize: 11,
+  fontWeight: 500,
+} as const;
 
 function VideoRenderStatusInner({
   videoStatus,
   videoError,
   videoUrl,
   videoRenderLoading,
+  hasImages,
+  projectFailed,
+  showLoader,
 }: VideoRenderStatusProps) {
   const s = (videoStatus ?? "").toLowerCase();
   const busy =
     videoRenderLoading || s === "queued" || s === "processing";
   const failed = s === "failed" || Boolean(videoError && !videoUrl);
-  const done = Boolean(videoUrl) || s === "completed";
+  const ready = Boolean(videoUrl) || s === "completed";
 
-  if (!busy && !failed && !done && !videoRenderLoading) return null;
-
-  return (
-    <div
-      className="mb-3 rounded-xl border border-white/[0.08] bg-zinc-900/50 px-4 py-3"
-      role="status"
-      aria-live="polite"
-    >
-      <div className="flex flex-wrap items-center gap-2">
-        {busy ? (
-          <span
-            className="inline-block h-4 w-4 animate-spin rounded-full border-2 border-violet-400/30 border-t-violet-400"
-            aria-hidden
-          />
-        ) : null}
-        <span className="text-xs font-medium uppercase tracking-wider text-zinc-400">
-          Video render
-        </span>
-        {failed ? (
-          <Badge variant="failed">Failed</Badge>
-        ) : done ? (
-          <Badge variant="done">Ready</Badge>
-        ) : (
-          <Badge variant="processing">{statusLabel(videoStatus)}</Badge>
-        )}
+  if (busy) {
+    return (
+      <div
+        role="status"
+        aria-live="polite"
+        style={{
+          ...pillBase,
+          background: "rgba(37,99,235,0.12)",
+          border: "1px solid rgba(59,130,246,0.25)",
+          color: "#93c5fd",
+        }}
+      >
+        <span
+          style={{
+            width: 6,
+            height: 6,
+            borderRadius: "50%",
+            background: "#60a5fa",
+          }}
+        />
+        <span>Rendering…</span>
       </div>
+    );
+  }
 
-      {busy ? (
-        <p className="mt-2 text-sm text-zinc-300">
-          {videoRenderLoading
-            ? "Starting render on the server…"
-            : s === "queued"
-              ? "In queue — FFmpeg will begin shortly."
-              : "Rendering your cinematic video — this can take a few minutes."}
-        </p>
-      ) : null}
+  if (failed) {
+    return (
+      <p
+        role="alert"
+        style={{
+          marginTop: 12,
+          fontSize: 13,
+          color: "rgba(248,113,113,0.9)",
+        }}
+      >
+        {videoError ?? "Render failed"}
+      </p>
+    );
+  }
 
-      {failed && videoError ? (
-        <p className="mt-2 text-sm leading-relaxed text-red-300/95" role="alert">
-          {videoError}
-        </p>
-      ) : null}
+  if (ready || (hasImages && !projectFailed && !showLoader)) {
+    return (
+      <div
+        style={{
+          ...pillBase,
+          background: "rgba(34,197,94,0.08)",
+          border: "1px solid rgba(34,197,94,0.2)",
+          color: "rgba(134,239,172,0.9)",
+        }}
+      >
+        <span
+          style={{
+            width: 6,
+            height: 6,
+            borderRadius: "50%",
+            background: "#4ade80",
+          }}
+        />
+        <span>Ready</span>
+      </div>
+    );
+  }
 
-      {!busy && !failed && done && !videoUrl ? (
-        <p className="mt-2 text-sm text-zinc-400">
-          Render finished — refresh if the player does not appear.
-        </p>
-      ) : null}
-    </div>
-  );
+  return null;
 }
 
 export const VideoRenderStatus = memo(VideoRenderStatusInner);

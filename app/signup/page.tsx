@@ -1,7 +1,7 @@
 "use client";
 
 import { useSignupForm } from "@/features/auth/hooks/use-signup-form";
-import { CinematicBackdrop } from "@/components/layout/cinematic-backdrop";
+import { LenePageShell } from "@/components/layout/lene-page-shell";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
 
@@ -85,10 +85,8 @@ export default function SignupPage() {
   } = useSignupForm();
 
   return (
-    <div className="font-sans relative min-h-screen overflow-hidden bg-background text-foreground">
-      <CinematicBackdrop />
-
-      <div className="relative z-10 mx-auto grid min-h-screen max-w-[1200px] lg:grid-cols-[minmax(0,1fr)_minmax(0,440px)]">
+    <LenePageShell>
+      <div className="mx-auto grid min-h-screen max-w-[1200px] lg:grid-cols-[minmax(0,1fr)_minmax(0,440px)]">
         <aside className="animate-login-rise relative hidden flex-col justify-center gap-8 px-8 py-16 pl-10 pr-6 lg:flex xl:pl-14">
           <div className="relative">
             <p className="mb-4 inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.04] px-3 py-1 text-[11px] font-medium uppercase tracking-[0.22em] text-zinc-400 backdrop-blur-md">
@@ -96,22 +94,18 @@ export default function SignupPage() {
               Join Lene Video
             </p>
             <h2 className="max-w-lg text-balance text-4xl font-semibold tracking-tight text-white xl:text-[2.5rem] xl:leading-[1.08]">
-              <span className="bg-gradient-to-br from-white via-zinc-100 to-zinc-400 bg-clip-text text-transparent">
-                Your studio
-              </span>{" "}
-              <span className="bg-gradient-to-br from-violet-200 via-violet-400 to-fuchsia-500 bg-clip-text text-transparent">
-                starts here.
-              </span>
+              <span className="studio-gradient-title">Your studio</span>{" "}
+              <span className="studio-gradient-accent">starts here.</span>
             </h2>
             <p className="mt-5 max-w-md text-pretty text-base leading-relaxed text-zinc-400">
-              Create an account, sign in with the same secure JWT flow, and jump
-              straight into prompt-to-video generation.
+              Create an account and go straight to Image Studio—scenes,
+              templates, and cinematic video in one flow.
             </p>
           </div>
           <ul className="space-y-3 text-sm text-zinc-500">
             <li className="flex gap-3">
               <span className="text-violet-400">✓</span>
-              <span>Dashboard access to generate & preview AI clips</span>
+              <span>Full studio access to generate scenes & render video</span>
             </li>
             <li className="flex gap-3">
               <span className="text-violet-400">✓</span>
@@ -158,7 +152,7 @@ export default function SignupPage() {
                 />
               </div>
 
-              <div className="relative overflow-hidden rounded-[1.3rem] border border-white/[0.09] bg-zinc-950/55 shadow-[0_0_0_1px_rgb(255_255_255/0.04),0_24px_80px_-12px_rgb(0_0_0/0.65)] backdrop-blur-2xl">
+              <div className="studio-panel relative overflow-hidden rounded-[1.3rem] border border-white/[0.09] bg-zinc-950/55 shadow-[0_0_0_1px_rgb(255_255_255/0.04),0_24px_80px_-12px_rgb(0_0_0/0.65)] backdrop-blur-2xl">
                 <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-violet-400/45 to-transparent" />
                 <div className="relative px-8 py-9 sm:px-10">
                   <div className="mb-6">
@@ -168,13 +162,13 @@ export default function SignupPage() {
                       </span>
                     </h1>
                     <p className="mt-2 text-pretty text-sm leading-relaxed text-zinc-400">
-                      Set up your Lene Video profile—then head to the studio to
-                      generate AI video from prompts.
+                      Set up your profile—you&apos;ll land in Image Studio ready
+                      to create cinematic scenes and video.
                     </p>
                   </div>
 
                   <div className="mb-6 flex flex-wrap gap-2">
-                    {["Prompt → video", "JWT session", "Studio access"].map(
+                    {["Scenes → video", "JWT session", "Studio access"].map(
                       (tag) => (
                         <span
                           key={tag}
@@ -301,6 +295,6 @@ export default function SignupPage() {
           </div>
         </main>
       </div>
-    </div>
+    </LenePageShell>
   );
 }

@@ -2,20 +2,32 @@
 
 import type { StudioTemplate } from "@/features/studio/types";
 import { memo, useMemo } from "react";
+import { sectionLabel } from "../lib/studio-ui-styles";
 
-const TEMPLATE_ICONS: Record<string, string> = {
-  cinematic_trailer: "🎬",
-  motivational_reel: "🔥",
-  horror_story: "👁",
-  luxury_ad: "✨",
-  documentary: "📽",
-  anime_sequence: "⚡",
-  social_reel: "📱",
-  product_promo: "📦",
-};
+const STYLES_DATA = [
+  { label: "Cinematic Trailer", icon: "🎬", desc: "Epic shots, lens flares" },
+  { label: "Motivational Reel", icon: "⚡", desc: "Bold cuts, energy" },
+  { label: "Horror Story", icon: "🌑", desc: "Dread, harsh contrast" },
+  { label: "Luxury Ad", icon: "💎", desc: "Slow motion, refined" },
+  { label: "Documentary", icon: "📽", desc: "Raw, ambient realism" },
+  { label: "Noir", icon: "🌧", desc: "Shadows, moral weight" },
+  { label: "Anime Sequence", icon: "✨", desc: "Stylized motion, vibrant" },
+  { label: "Social Reel", icon: "📱", desc: "Vertical, punchy hooks" },
+  { label: "Product Promo", icon: "🛍", desc: "Feature highlights, CTA" },
+] as const;
 
-function iconFor(key: string): string {
-  return TEMPLATE_ICONS[key] ?? "🎞";
+const STYLE_LOOKUP = Object.fromEntries(
+  STYLES_DATA.map((s) => [s.label.toLowerCase(), s])
+);
+
+function styleMeta(template: StudioTemplate) {
+  const hit = STYLE_LOOKUP[template.name.toLowerCase()];
+  if (hit) return hit;
+  return {
+    label: template.name,
+    icon: "🎨",
+    desc: template.description ?? "",
+  };
 }
 
 type TemplatePickerProps = {
@@ -33,19 +45,46 @@ function TemplatePickerInner({
   loading,
   catalogError,
 }: TemplatePickerProps) {
-  const selected = useMemo(
-    () => templates.find((t) => t.key === templateKey) ?? templates[0],
-    [templates, templateKey]
-  );
+  const ordered = useMemo(() => {
+    const byName = new Map(templates.map((t) => [t.name.toLowerCase(), t]));
+    const picked: StudioTemplate[] = [];
+    const seen = new Set<string>();
+
+    for (const s of STYLES_DATA) {
+      const t = byName.get(s.label.toLowerCase());
+      if (t) {
+        picked.push(t);
+        seen.add(t.key);
+      }
+    }
+    for (const t of templates) {
+      if (!seen.has(t.key)) picked.push(t);
+    }
+    return picked;
+  }, [templates]);
 
   if (loading && templates.length === 0) {
     return (
-      <div className="mb-6 space-y-3" aria-busy="true">
-        <div className="flex gap-2 overflow-hidden">
-          {[1, 2, 3, 4].map((i) => (
+      <div aria-busy="true">
+        <div style={{ ...sectionLabel, margin: "0 0 8px", marginTop: 0 }}>
+          Style template
+        </div>
+        <div
+          style={{
+            display: "grid",
+            gridTemplateColumns: "1fr 1fr",
+            gap: 6,
+            marginBottom: 16,
+          }}
+        >
+          {[1, 2, 3, 4, 5, 6, 7, 8].map((i) => (
             <div
               key={i}
-              className="h-[72px] w-[140px] shrink-0 animate-pulse rounded-xl bg-zinc-800/60"
+              style={{
+                height: 44,
+                borderRadius: 8,
+                background: "rgba(255,255,255,0.03)",
+              }}
             />
           ))}
         </div>
@@ -54,56 +93,102 @@ function TemplatePickerInner({
   }
 
   return (
-    <div className="mb-6">
-      <div className="mb-2 flex items-center justify-between gap-2">
-        <span className="text-xs font-semibold uppercase tracking-[0.2em] text-violet-300/80">
-          Style template
-        </span>
+    <>
+      <div style={{ ...sectionLabel, margin: "0 0 8px", marginTop: 0 }}>
+        Style template
         {catalogError ? (
-          <span className="text-[10px] text-amber-400/90">Catalog offline</span>
+          <span
+            style={{
+              marginLeft: 8,
+              fontWeight: 400,
+              textTransform: "none",
+              letterSpacing: 0,
+              color: "rgba(96,120,200,0.35)",
+            }}
+          >
+            · offline
+          </span>
         ) : null}
       </div>
-
-      <div className="-mx-1 flex gap-2 overflow-x-auto px-1 pb-2">
-        {templates.map((t) => {
+      <div
+        style={{
+          display: "grid",
+          gridTemplateColumns: "1fr 1fr",
+          gap: 6,
+          marginBottom: 16,
+        }}
+      >
+        {ordered.map((t) => {
           const active = t.key === templateKey;
+          const meta = styleMeta(t);
           return (
             <button
               key={t.key}
               type="button"
               onClick={() => onSelect(t.key)}
-              className={`flex w-[min(100%,152px)] shrink-0 flex-col items-start gap-1 rounded-xl border px-3 py-2.5 text-left transition ${
+              className={
                 active
-                  ? "border-violet-500/60 bg-violet-500/15 shadow-[0_0_24px_-6px_rgb(139_92_246/0.55)] ring-1 ring-violet-400/30"
-                  : "border-white/10 bg-white/[0.03] hover:border-white/20 hover:bg-white/[0.05]"
-              }`}
+                  ? "studio-template-card studio-template-card--active"
+                  : "studio-template-card"
+              }
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: 8,
+                padding: "9px 11px",
+                borderRadius: 10,
+                cursor: "pointer",
+                background: active
+                  ? "linear-gradient(135deg, rgba(99,102,241,0.22), rgba(59,130,246,0.1))"
+                  : "rgba(255,255,255,0.03)",
+                border: active
+                  ? "1px solid rgba(129,140,248,0.45)"
+                  : "1px solid rgba(255,255,255,0.08)",
+                textAlign: "left",
+                fontFamily: "inherit",
+              }}
             >
-              <span className="text-lg leading-none" aria-hidden>
-                {iconFor(t.key)}
-              </span>
               <span
-                className={`text-xs font-semibold leading-tight ${
-                  active ? "text-violet-100" : "text-zinc-200"
-                }`}
+                style={{
+                  fontSize: 16,
+                  flexShrink: 0,
+                  width: 20,
+                  textAlign: "center",
+                }}
               >
-                {t.name}
+                {meta.icon}
               </span>
-              {t.defaultSceneCount != null ? (
-                <span className="text-[10px] text-zinc-500">
-                  {t.defaultSceneCount} scenes
+              <span style={{ minWidth: 0 }}>
+                <span
+                  style={{
+                    display: "block",
+                    fontSize: 11.5,
+                    fontWeight: 500,
+                    lineHeight: 1.2,
+                    color: active ? "#93c5fd" : "rgba(148,163,220,0.65)",
+                  }}
+                >
+                  {meta.label}
                 </span>
-              ) : null}
+                <span
+                  style={{
+                    display: "block",
+                    fontSize: 10,
+                    color: "rgba(96,120,200,0.4)",
+                    marginTop: 1,
+                    whiteSpace: "nowrap",
+                    overflow: "hidden",
+                    textOverflow: "ellipsis",
+                  }}
+                >
+                  {meta.desc}
+                </span>
+              </span>
             </button>
           );
         })}
       </div>
-
-      {selected?.description ? (
-        <p className="text-sm leading-relaxed text-zinc-400">
-          {selected.description}
-        </p>
-      ) : null}
-    </div>
+    </>
   );
 }
 

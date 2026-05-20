@@ -1,7 +1,7 @@
 "use client";
 
 import { useLoginForm } from "@/features/auth/hooks/use-login-form";
-import { CinematicBackdrop } from "@/components/layout/cinematic-backdrop";
+import { LenePageShell } from "@/components/layout/lene-page-shell";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
 
@@ -135,10 +135,8 @@ export default function LoginPage() {
   } = useLoginForm();
 
   return (
-    <div className="font-sans relative min-h-screen overflow-hidden bg-background text-foreground">
-      <CinematicBackdrop />
-
-      <div className="relative z-10 mx-auto grid min-h-screen max-w-[1200px] lg:grid-cols-[minmax(0,1fr)_minmax(0,440px)]">
+    <LenePageShell>
+      <div className="mx-auto grid min-h-screen max-w-[1200px] lg:grid-cols-[minmax(0,1fr)_minmax(0,440px)]">
         {/* Hero — desktop */}
         <aside className="animate-login-rise relative hidden flex-col justify-center gap-10 px-8 py-16 pl-10 pr-6 lg:flex xl:pl-14">
           <div
@@ -149,36 +147,31 @@ export default function LoginPage() {
           <div className="relative">
             <p className="mb-4 inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.04] px-3 py-1 text-[11px] font-medium uppercase tracking-[0.22em] text-zinc-400 backdrop-blur-md">
               <SparklesIcon className="h-3.5 w-3.5 text-violet-400" />
-              Lene Video · Text to motion
+              Lene Video · Cinematic studio
             </p>
             <h2 className="max-w-lg text-balance text-4xl font-semibold tracking-tight text-white xl:text-[2.75rem] xl:leading-[1.08]">
-              <span className="bg-gradient-to-br from-white via-zinc-100 to-zinc-400 bg-clip-text text-transparent">
-                Describe a scene.
-              </span>{" "}
-              <span className="bg-gradient-to-br from-violet-200 via-violet-400 to-fuchsia-500 bg-clip-text text-transparent">
-                Get AI video back.
-              </span>
+              <span className="studio-gradient-title">Describe a scene.</span>{" "}
+              <span className="studio-gradient-accent">Watch it render.</span>
             </h2>
             <p className="mt-5 max-w-md text-pretty text-base leading-relaxed text-zinc-400">
-              Write a prompt—subject, mood, camera, lighting—and Lene Video
-              turns it into a clip you can preview in your studio. Sign in to
-              generate, track jobs, and watch the result when it’s ready.
+              Write a prompt, pick a template, generate scene images, and
+              render your video—all in one premium studio after you sign in.
             </p>
           </div>
 
           <ul className="relative space-y-4">
             {[
               {
-                title: "Prompt → AI video",
-                body: "Send a text prompt and duration; your backend renders the clip.",
+                title: "Scene generation",
+                body: "AI paints each frame with live progress and storyboard previews.",
               },
               {
                 title: "Secure sign-in",
                 body: "JWT-backed auth—same session your API already trusts.",
               },
               {
-                title: "Studio preview",
-                body: "Open the dashboard to generate, poll status, and play the file.",
+                title: "Cinematic studio",
+                body: "Land in Image Studio after login—generate, render, and preview.",
               },
             ].map((item) => (
               <li
@@ -249,7 +242,7 @@ export default function LoginPage() {
                 />
               </div>
 
-              <div className="relative overflow-hidden rounded-[1.3rem] border border-white/[0.09] bg-zinc-950/55 shadow-[0_0_0_1px_rgb(255_255_255/0.04),0_24px_80px_-12px_rgb(0_0_0/0.65)] backdrop-blur-2xl">
+              <div className="studio-panel relative overflow-hidden rounded-[1.3rem] border border-white/[0.09] bg-zinc-950/55 shadow-[0_0_0_1px_rgb(255_255_255/0.04),0_24px_80px_-12px_rgb(0_0_0/0.65)] backdrop-blur-2xl">
                 <div
                   className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-violet-400/45 to-transparent"
                   aria-hidden
@@ -263,8 +256,8 @@ export default function LoginPage() {
                         </span>
                       </h1>
                       <p className="mt-2 max-w-sm text-pretty text-sm leading-relaxed text-zinc-400">
-                        Access your studio: write prompts, start AI video
-                        generation, and preview clips when processing finishes.
+                        Sign in to open Image Studio—create scenes, track
+                        generation, and render your cinematic video.
                       </p>
                     </div>
                     <span
@@ -276,7 +269,7 @@ export default function LoginPage() {
                   </div>
 
                   <div className="mb-8 flex flex-wrap gap-2">
-                    {["Prompt → video", "AI-generated", "JWT session"].map((tag) => (
+                    {["Scenes → video", "AI-generated", "JWT session"].map((tag) => (
                       <span
                         key={tag}
                         className="inline-flex items-center gap-1.5 rounded-full border border-white/[0.07] bg-white/[0.03] px-2.5 py-1 text-[11px] font-medium text-zinc-400"
@@ -398,6 +391,6 @@ export default function LoginPage() {
           </div>
         </main>
       </div>
-    </div>
+    </LenePageShell>
   );
 }

@@ -1,20 +1,24 @@
 "use client";
 
-import { CinematicBackdrop } from "@/components/layout/cinematic-backdrop";
-import Link from "next/link";
 import { memo, useMemo } from "react";
 import { useImagesStudio } from "../hooks/use-images-studio";
-import { studioPanelClass } from "../lib/studio-styles";
+import {
+  STUDIO_PAGE_CLASS,
+  glassPanel,
+  studioGlowOverlay,
+  studioLayoutRow,
+  studioRoot,
+} from "../lib/studio-ui-styles";
+import { StudioAmbientField } from "@/components/layout/studio-ambient-field";
 import { ImageGridPanel } from "./image-grid-panel";
-import { ImageHistoryPanel } from "./image-history-panel";
 import { ImagePreviewModal } from "./image-preview-modal";
 import { ImagePromptForm } from "./image-prompt-form";
-import { WandIcon } from "./icons";
+import { StudioSidebar } from "./studio-sidebar";
 
 function ImagesStudioShell() {
   const studio = useImagesStudio();
 
-  const historyPanelProps = useMemo(
+  const sidebarProps = useMemo(
     () => ({
       history: studio.history,
       sortedHistory: studio.sortedHistory,
@@ -24,9 +28,8 @@ function ImagesStudioShell() {
       allHistoryCount: studio.allHistoryCount,
       projectId: studio.projectId,
       loadProject: studio.loadProject,
-      templates: studio.templates,
-      toggleHistoryFavorite: studio.toggleHistoryFavorite,
-      deleteHistoryProject: studio.deleteHistoryProject,
+      handleClearHistory: studio.handleClearHistory,
+      handleLogout: studio.handleLogout,
     }),
     [
       studio.history,
@@ -37,9 +40,8 @@ function ImagesStudioShell() {
       studio.allHistoryCount,
       studio.projectId,
       studio.loadProject,
-      studio.templates,
-      studio.toggleHistoryFavorite,
-      studio.deleteHistoryProject,
+      studio.handleClearHistory,
+      studio.handleLogout,
     ]
   );
 
@@ -49,7 +51,6 @@ function ImagesStudioShell() {
       setPrompt: studio.setPrompt,
       sceneCount: studio.sceneCount,
       setSceneCount: studio.setSceneCount,
-      setCustomSceneCount: studio.setCustomSceneCount,
       templates: studio.templates,
       templateKey: studio.templateKey,
       setTemplateKey: studio.setTemplateKey,
@@ -59,8 +60,6 @@ function ImagesStudioShell() {
       setError: studio.setError,
       projectId: studio.projectId,
       showLoader: studio.showLoader,
-      slideshowVideoDuration: studio.slideshowVideoDuration,
-      setSlideshowVideoDuration: studio.setSlideshowVideoDuration,
       handleGenerate: studio.handleGenerate,
       handleRetryGeneration: studio.handleRetryGeneration,
     }),
@@ -69,7 +68,6 @@ function ImagesStudioShell() {
       studio.setPrompt,
       studio.sceneCount,
       studio.setSceneCount,
-      studio.setCustomSceneCount,
       studio.templates,
       studio.templateKey,
       studio.setTemplateKey,
@@ -79,8 +77,6 @@ function ImagesStudioShell() {
       studio.setError,
       studio.projectId,
       studio.showLoader,
-      studio.slideshowVideoDuration,
-      studio.setSlideshowVideoDuration,
       studio.handleGenerate,
       studio.handleRetryGeneration,
     ]
@@ -92,9 +88,12 @@ function ImagesStudioShell() {
       progress: studio.progress,
       projectFailed: studio.projectFailed,
       showLoader: studio.showLoader,
+      isGeneratingImages: studio.isGeneratingImages,
+      videoRenderInProgress: studio.videoRenderInProgress,
       totalCost: studio.totalCost,
       sortedImages: studio.sortedImages,
       scrollAreaRef: studio.scrollAreaRef,
+      previewScene: studio.previewScene,
       handleDownloadAll: studio.handleDownloadAll,
       setPreviewScene: studio.setPreviewScene,
       videoUrl: studio.videoUrl,
@@ -102,6 +101,8 @@ function ImagesStudioShell() {
       videoError: studio.videoError,
       videoRenderLoading: studio.videoRenderLoading,
       canCreateSlideshow: studio.canCreateSlideshow,
+      missingSceneNumbers: studio.missingSceneNumbers,
+      imagesGenerationComplete: studio.imagesGenerationComplete,
       slideshowVideoDuration: studio.slideshowVideoDuration,
       setSlideshowVideoDuration: studio.setSlideshowVideoDuration,
       slideshowIncludeNarration: studio.slideshowIncludeNarration,
@@ -117,7 +118,9 @@ function ImagesStudioShell() {
       scenes: studio.scenes,
       motionPresets: studio.motionPresets,
       patchingScene: studio.patchingScene,
+      markingAllScenesReady: studio.markingAllScenesReady,
       handlePatchScene: studio.handlePatchScene,
+      handleMarkAllScenesReady: studio.handleMarkAllScenesReady,
     }),
     [studio]
   );
@@ -148,80 +151,45 @@ function ImagesStudioShell() {
   );
 
   return (
-    <div className="relative min-h-screen overflow-x-hidden bg-background font-sans text-foreground">
-      <CinematicBackdrop />
+    <div className={STUDIO_PAGE_CLASS} style={studioRoot}>
+      <div style={studioGlowOverlay} aria-hidden />
+      <StudioAmbientField starCount={56} meteorCount={0} />
+      <div className="studio-orb studio-orb--violet" aria-hidden />
+      <div className="studio-orb studio-orb--cyan" aria-hidden />
+      <div className="studio-orb studio-orb--rose" aria-hidden />
 
-      <div className="relative z-10 mx-auto max-w-[1600px] px-4 py-8 sm:px-6 lg:px-8">
-        <header className="mb-8 flex flex-col gap-4 sm:mb-10 sm:flex-row sm:items-center sm:justify-between">
-          <div className="flex items-center gap-3">
-            <div className="relative">
-              <div className="absolute inset-0 rounded-2xl bg-gradient-to-br from-violet-500 to-fuchsia-600 opacity-50 blur-md" />
-              <div className="relative flex h-11 w-11 items-center justify-center rounded-2xl bg-gradient-to-br from-violet-500 to-fuchsia-600 shadow-lg shadow-violet-600/25 ring-1 ring-white/15">
-                <span className="text-base font-bold text-white">L</span>
-              </div>
-            </div>
-            <div>
-              <p className="text-[11px] font-medium uppercase tracking-[0.2em] text-zinc-500">
-                Lene Studio
-              </p>
-              <h1 className="text-lg font-semibold tracking-tight text-white">
-                Cinematic images
-              </h1>
-            </div>
-          </div>
-          <div className="flex flex-wrap items-center gap-2">
-            <button
-              type="button"
-              onClick={studio.handleClearHistory}
-              className="rounded-xl border border-white/10 px-3 py-2 text-sm text-zinc-400 transition hover:text-white"
-            >
-              Clear session
-            </button>
-            <Link
-              href="/dashboard"
-              className="rounded-xl border border-white/10 bg-white/[0.04] px-3 py-2 text-sm text-zinc-300 transition hover:bg-white/[0.07]"
-            >
-              Video studio
-            </Link>
-            <button
-              type="button"
-              onClick={studio.handleLogout}
-              className="rounded-xl border border-white/10 px-3 py-2 text-sm text-zinc-400 transition hover:text-white"
-            >
-              Log out
-            </button>
-          </div>
-        </header>
-
-        <div className="mb-8 max-w-3xl">
-          <p className="mb-2 inline-flex items-center gap-2 rounded-full border border-violet-500/20 bg-violet-500/10 px-3 py-1 text-[11px] font-medium uppercase tracking-wider text-violet-300/90">
-            <WandIcon className="h-3.5 w-3.5" />
-            Template → scenes → video
-          </p>
-          <h2 className="text-balance text-3xl font-semibold tracking-tight sm:text-4xl">
-            <span className="bg-gradient-to-b from-white to-zinc-400 bg-clip-text text-transparent">
-              Describe it.
-            </span>{" "}
-            <span className="bg-gradient-to-r from-violet-300 to-fuchsia-400 bg-clip-text text-transparent">
-              Watch scenes appear live.
-            </span>
-          </h2>
-          <p className="mt-3 max-w-2xl text-pretty text-sm leading-relaxed text-zinc-400">
-            Pick a cinematic template, generate FLUX scenes, then render a
-            motion trailer — all aligned to your Nest API.
-          </p>
+      <div style={studioLayoutRow}>
+        <div className="hidden lg:flex studio-fade-in" style={{ height: "100%" }}>
+          <StudioSidebar {...sidebarProps} />
         </div>
 
-        <div className="grid grid-cols-1 gap-6 lg:grid-cols-12">
-          <div className={`lg:col-span-3 ${studioPanelClass}`}>
-            <ImageHistoryPanel {...historyPanelProps} />
-          </div>
-          <div className="lg:col-span-4">
-            <ImagePromptForm {...promptFormProps} />
-          </div>
-          <div className={`lg:col-span-5 ${studioPanelClass}`}>
-            <ImageGridPanel {...gridPanelProps} />
-          </div>
+        <main
+          className="hide-scroll studio-fade-in-delay"
+          style={{
+            ...glassPanel,
+            background:
+              "linear-gradient(145deg, rgba(8,12,28,0.94) 0%, rgba(6,10,26,0.9) 100%)",
+            flex: 1,
+            position: "relative",
+            zIndex: 1,
+            overflowY: "auto",
+            overflowX: "hidden",
+            display: "flex",
+            flexDirection: "column",
+            alignItems: "center",
+            padding: "32px 48px 48px",
+            minWidth: 0,
+            height: "100%",
+          }}
+        >
+          <ImagePromptForm {...promptFormProps} />
+        </main>
+
+        <div
+          className="hidden lg:flex studio-fade-in"
+          style={{ height: "100%", animationDelay: "0.12s" }}
+        >
+          <ImageGridPanel {...gridPanelProps} />
         </div>
       </div>
 

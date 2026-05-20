@@ -1,9 +1,15 @@
-import { Button } from "@/components/ui/button";
-import { memo } from "react";
+"use client";
+
+import { memo, useState } from "react";
 import type { ImagesStudioState } from "../hooks/use-images-studio";
-import { studioPanelInnerClass, studioSectionTitleClass } from "../lib/studio-styles";
-import { DurationPresets } from "./duration-presets";
-import { ImageIcon } from "./icons";
+import { MAX_SCENE_COUNT, MIN_SCENE_COUNT } from "../constants";
+import {
+  heading,
+  promptBox,
+  promptTextarea,
+  sectionLabel,
+  subtext,
+} from "../lib/studio-ui-styles";
 import { TemplatePicker } from "./template-picker";
 
 type ImagePromptFormProps = Pick<
@@ -12,7 +18,6 @@ type ImagePromptFormProps = Pick<
   | "setPrompt"
   | "sceneCount"
   | "setSceneCount"
-  | "setCustomSceneCount"
   | "templates"
   | "templateKey"
   | "setTemplateKey"
@@ -22,18 +27,31 @@ type ImagePromptFormProps = Pick<
   | "setError"
   | "projectId"
   | "showLoader"
-  | "slideshowVideoDuration"
-  | "setSlideshowVideoDuration"
   | "handleGenerate"
   | "handleRetryGeneration"
 >;
+
+const PRESETS = [3, 5, 8] as const;
+
+const sceneBtnStyle = (active: boolean) => ({
+  width: 44,
+  height: 34,
+  borderRadius: 8,
+  background: active ? "rgba(37,99,235,0.18)" : "rgba(255,255,255,0.04)",
+  border: active
+    ? "1px solid rgba(59,130,246,0.4)"
+    : "1px solid rgba(255,255,255,0.07)",
+  fontSize: 13,
+  color: active ? "#93c5fd" : "rgba(148,163,220,0.5)",
+  cursor: "pointer",
+  fontFamily: "inherit",
+});
 
 function ImagePromptFormInner({
   prompt,
   setPrompt,
   sceneCount,
   setSceneCount,
-  setCustomSceneCount,
   templates,
   templateKey,
   setTemplateKey,
@@ -43,132 +61,248 @@ function ImagePromptFormInner({
   setError,
   projectId,
   showLoader,
-  slideshowVideoDuration,
-  setSlideshowVideoDuration,
   handleGenerate,
   handleRetryGeneration,
 }: ImagePromptFormProps) {
   const canGenerate = prompt.trim().length > 0 && !showLoader;
+  const isPreset = (PRESETS as readonly number[]).includes(sceneCount);
+  const isCustomActive = !isPreset;
+  const [customDraft, setCustomDraft] = useState(
+    () => (isPreset ? "" : String(sceneCount))
+  );
+
+  const commitCustom = (raw: string) => {
+    if (raw.trim() === "") return;
+    const n = parseInt(raw, 10);
+    if (Number.isNaN(n)) return;
+    const v = Math.max(MIN_SCENE_COUNT, Math.min(MAX_SCENE_COUNT, n));
+    setCustomDraft(String(v));
+    setSceneCount(v);
+  };
 
   return (
-    <div className="relative h-full">
-      <div className="absolute -inset-px rounded-2xl bg-gradient-to-br from-violet-500/20 via-transparent to-fuchsia-500/15 opacity-80 blur-sm" />
-      <div className={`${studioPanelInnerClass} p-6 sm:p-7`}>
-        <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-violet-400/40 to-transparent" />
+    <div
+      style={{
+        width: "100%",
+        maxWidth: 560,
+        position: "relative",
+        zIndex: 2,
+      }}
+    >
+      <h1 className="studio-gradient-title" style={heading}>
+        Create your{" "}
+        <span className="studio-gradient-accent">cinematic</span> story
+      </h1>
+      <p style={subtext}>
+        Describe the vision. Pick a style. Generate scenes in one flow.
+      </p>
 
-        <p className={`mb-4 ${studioSectionTitleClass}`}>Create</p>
-
-        <label
-          htmlFor="image-prompt"
-          className="mb-2 flex items-center justify-between gap-2"
-        >
-          <span className="text-[11px] font-medium uppercase tracking-wider text-zinc-500">
-            Prompt
-          </span>
-          <span className="text-xs text-zinc-600">{prompt.length} chars</span>
+      <div
+        className="studio-prompt-box"
+        style={{ ...promptBox, marginBottom: 14 }}
+      >
+        <label htmlFor="image-prompt" className="sr-only">
+          Prompt
         </label>
         <textarea
           id="image-prompt"
           value={prompt}
           onChange={(e) => setPrompt(e.target.value)}
-          rows={6}
-          placeholder="Epic sci-fi trailer: lone pilot against a neon megacity, rim light, anamorphic lens flare, slow push-in on the hero…"
-          className="mb-4 min-h-[140px] w-full resize-none rounded-xl border border-white/[0.09] bg-zinc-900/45 px-4 py-3 text-sm leading-relaxed text-zinc-100 outline-none ring-0 placeholder:text-zinc-600 focus:border-violet-500/40 focus:shadow-[0_0_0_3px_rgb(139_92_246/0.12)]"
+          placeholder="A lone astronaut walks through a neon-lit megacity at dusk, anamorphic lens flare, slow push-in…"
+          style={{ ...promptTextarea, minHeight: 100 }}
         />
-
-        <TemplatePicker
-          templates={templates}
-          templateKey={templateKey}
-          onSelect={setTemplateKey}
-          loading={catalogLoading}
-          catalogError={catalogError}
-        />
-
-        <p className={`mb-2 ${studioSectionTitleClass}`}>Scene count</p>
-        <div className="mb-6 flex flex-wrap items-center gap-2">
-          {[3, 5, 8].map((n) => (
-            <button
-              key={n}
-              type="button"
-              onClick={() => setSceneCount(n)}
-              className={`rounded-xl border px-4 py-2 text-sm font-medium transition ${
-                sceneCount === n
-                  ? "border-violet-500/50 bg-violet-500/15 text-violet-200 shadow-[0_0_20px_-4px_rgb(139_92_246/0.4)]"
-                  : "border-white/10 bg-white/[0.03] text-zinc-400 hover:border-white/15 hover:text-zinc-200"
-              }`}
-            >
-              {n}
-            </button>
-          ))}
-          <label
-            className={`flex items-center gap-2 rounded-xl border px-3 py-2 text-sm transition ${
-              ![3, 5, 8].includes(sceneCount)
-                ? "border-violet-500/50 bg-violet-500/15 text-violet-200"
-                : "border-white/10 bg-white/[0.03] text-zinc-400"
-            }`}
-          >
-            <span className="text-xs font-medium uppercase tracking-wider">
-              Custom
-            </span>
-            <input
-              type="number"
-              min={1}
-              max={20}
-              value={sceneCount}
-              onChange={(e) => setCustomSceneCount(e.target.value)}
-              className="w-14 rounded-md border border-white/10 bg-zinc-950/60 px-2 py-1 text-center text-sm font-semibold text-zinc-100 outline-none focus:border-violet-500/50"
-              aria-label="Custom scene count"
-            />
-          </label>
-        </div>
-
-        <p className={`mb-2 ${studioSectionTitleClass}`}>Target video length</p>
-        <DurationPresets
-          value={slideshowVideoDuration}
-          onChange={setSlideshowVideoDuration}
-          className="mb-6"
-        />
-
-        {error ? (
-          <div
-            role="alert"
-            className="mb-5 rounded-xl border border-red-500/30 bg-red-500/[0.12] px-4 py-3 text-sm text-red-100/95"
-          >
-            <p className="leading-relaxed">{error}</p>
-            <div className="mt-3 flex flex-wrap gap-3">
-              <button
-                type="button"
-                onClick={() => setError(null)}
-                className="text-xs font-medium text-zinc-400 transition hover:text-white"
-              >
-                Dismiss
-              </button>
-              <button
-                type="button"
-                onClick={handleRetryGeneration}
-                className="text-xs font-medium text-violet-400 transition hover:text-violet-300"
-              >
-                Try again
-              </button>
-            </div>
-          </div>
-        ) : null}
-
-        <Button
-          type="button"
-          variant="heroPrimary"
-          onClick={handleGenerate}
-          disabled={!canGenerate}
-          loading={showLoader}
-          loadingLabel={projectId ? "Generating..." : "Starting..."}
-          className="w-full bg-gradient-to-r from-violet-600 to-fuchsia-600 disabled:opacity-40"
+        <span
+          aria-hidden
+          style={{
+            position: "absolute",
+            bottom: 12,
+            right: 16,
+            fontSize: 10,
+            color: "rgba(96,120,200,0.3)",
+            pointerEvents: "none",
+          }}
         >
-          <>
-            <ImageIcon className="h-5 w-5 opacity-90" />
-            Generate images
-          </>
-        </Button>
+          {prompt.length}
+        </span>
       </div>
+
+      <TemplatePicker
+        templates={templates}
+        templateKey={templateKey}
+        onSelect={setTemplateKey}
+        loading={catalogLoading}
+        catalogError={catalogError}
+      />
+
+      <div style={{ ...sectionLabel, margin: "12px 0 8px" }}>Scenes</div>
+      <div
+        className="studio-scenes-block"
+        style={{
+          display: "flex",
+          gap: 8,
+          alignItems: "center",
+          marginBottom: 12,
+          padding: "10px 12px",
+          borderRadius: 10,
+          background: "rgba(6, 10, 26, 0.92)",
+          border: "1px solid rgba(255, 255, 255, 0.08)",
+          position: "relative",
+          isolation: "isolate",
+        }}
+      >
+        {PRESETS.map((n) => (
+          <button
+            key={n}
+            type="button"
+            onClick={() => {
+              setSceneCount(n);
+              setCustomDraft("");
+            }}
+            className="studio-scene-pill"
+            style={sceneBtnStyle(sceneCount === n)}
+          >
+            {n}
+          </button>
+        ))}
+        <input
+          type="text"
+          inputMode="numeric"
+          className="studio-scene-pill"
+          value={customDraft}
+          onChange={(e) => {
+            const raw = e.target.value;
+            if (raw !== "" && !/^\d+$/.test(raw)) return;
+            setCustomDraft(raw);
+            if (raw === "") return;
+            const n = parseInt(raw, 10);
+            if (!Number.isNaN(n)) {
+              setSceneCount(
+                Math.max(MIN_SCENE_COUNT, Math.min(MAX_SCENE_COUNT, n))
+              );
+            }
+          }}
+          onBlur={() => commitCustom(customDraft)}
+          aria-label="Custom scene count"
+          placeholder="Custom"
+          style={{
+            height: 34,
+            padding: "0 12px",
+            borderRadius: 8,
+            background: "rgba(255,255,255,0.04)",
+            border: isCustomActive
+              ? "1px solid rgba(59,130,246,0.4)"
+              : "1px solid rgba(255,255,255,0.07)",
+            fontSize: 12,
+            color: isCustomActive ? "#93c5fd" : "rgba(148,163,220,0.5)",
+            fontFamily: "inherit",
+            outline: "none",
+            cursor: "pointer",
+            minWidth: 64,
+            boxSizing: "border-box",
+            WebkitAppearance: "none",
+            appearance: "none",
+            colorScheme: "dark",
+          }}
+        />
+      </div>
+
+      {error ? (
+        <div
+          role="alert"
+          style={{
+            marginBottom: 12,
+            padding: "10px 14px",
+            borderRadius: 10,
+            border: "1px solid rgba(239,68,68,0.2)",
+            background: "rgba(239,68,68,0.06)",
+            fontSize: 13,
+            color: "rgba(248,113,113,0.9)",
+          }}
+        >
+          {error}
+          <div style={{ marginTop: 8, display: "flex", gap: 16, fontSize: 12 }}>
+            <button
+              type="button"
+              onClick={() => setError(null)}
+              style={{
+                background: "none",
+                border: "none",
+                padding: 0,
+                cursor: "pointer",
+                color: "rgba(148,163,220,0.5)",
+              }}
+            >
+              Dismiss
+            </button>
+            <button
+              type="button"
+              onClick={handleRetryGeneration}
+              style={{
+                background: "none",
+                border: "none",
+                padding: 0,
+                cursor: "pointer",
+                color: "#93c5fd",
+              }}
+            >
+              Try again
+            </button>
+          </div>
+        </div>
+      ) : null}
+
+      <button
+        type="button"
+        className="studio-btn-primary"
+        onClick={handleGenerate}
+        disabled={!canGenerate}
+        aria-busy={showLoader}
+        style={{
+          width: "100%",
+          height: 50,
+          borderRadius: 12,
+          border: "none",
+          background: showLoader
+            ? "linear-gradient(135deg, #312e81 0%, #3730a3 50%, #1e40af 100%)"
+            : "linear-gradient(135deg, #4338ca 0%, #4f46e5 28%, #2563eb 58%, #0ea5e9 100%)",
+          boxShadow: showLoader
+            ? "0 0 20px rgba(99,102,241,0.3), inset 0 1px 0 rgba(255,255,255,0.08)"
+            : "0 0 32px rgba(99,102,241,0.45), 0 1px 0 rgba(255,255,255,0.12) inset",
+          color: "white",
+          fontSize: 14,
+          fontWeight: 600,
+          letterSpacing: "0.03em",
+          cursor: canGenerate ? "pointer" : "not-allowed",
+          fontFamily: "inherit",
+          marginTop: 16,
+          marginBottom: 8,
+          opacity: canGenerate || showLoader ? 1 : 0.45,
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          gap: 10,
+        }}
+      >
+        {showLoader ? (
+          <span
+            className="studio-gen-ring-spin"
+            aria-hidden
+            style={{
+              width: 16,
+              height: 16,
+              borderRadius: "50%",
+              border: "2px solid rgba(255,255,255,0.25)",
+              borderTopColor: "#fff",
+              flexShrink: 0,
+            }}
+          />
+        ) : null}
+        {showLoader
+          ? projectId
+            ? "Generating scenes…"
+            : "Starting…"
+          : "Generate scenes"}
+      </button>
     </div>
   );
 }

@@ -41,7 +41,7 @@ function ImagePreviewModalInner({
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/85 p-4 backdrop-blur-sm"
+      className="fixed inset-0 z-50 flex items-center justify-center bg-[#07070e]/90 p-4 backdrop-blur-[20px]"
       role="dialog"
       aria-modal="true"
       aria-label={`Scene ${fallback.scene_number} preview`}
@@ -51,7 +51,7 @@ function ImagePreviewModalInner({
         className="relative w-full max-w-5xl"
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="absolute left-3 top-3 z-10 rounded-md bg-black/60 px-2.5 py-1 text-xs font-medium text-white/90 backdrop-blur-sm sm:left-4 sm:top-4">
+        <div className="absolute left-3 top-3 z-10 rounded-md border border-[rgba(255,255,255,0.06)] bg-[#0f0f1c]/90 px-2.5 py-1 text-xs font-medium text-[#c4c4d4] backdrop-blur-[20px] sm:left-4 sm:top-4">
           Scene {fallback.scene_number} · {positionLabel}
         </div>
 
@@ -61,14 +61,14 @@ function ImagePreviewModalInner({
             onClick={() =>
               void downloadImage(fallback.imageUrl!, fallback.scene_number)
             }
-            className="rounded-lg bg-violet-500/90 px-3 py-1.5 text-xs font-semibold text-white shadow-[0_6px_20px_-6px_rgb(139_92_246/0.6)] transition hover:bg-violet-400 focus:outline-none focus-visible:ring-2 focus-visible:ring-violet-300"
+            className="rounded-lg bg-gradient-to-br from-[#6d28d9] to-[#8b5cf6] px-3 py-1.5 text-xs font-semibold text-[#f0f0ff] shadow-[0_4px_20px_rgba(124,58,237,0.3)] transition duration-150 ease-out hover:brightness-110 focus:outline-none focus-visible:ring-2 focus-visible:ring-[rgba(124,58,237,0.4)]"
           >
             Download
           </button>
           <button
             type="button"
             onClick={closePreview}
-            className="rounded-lg bg-black/60 px-3 py-1.5 text-sm font-medium text-white backdrop-blur-sm transition hover:bg-black/80 focus:outline-none focus-visible:ring-2 focus-visible:ring-violet-500/50"
+            className="rounded-lg border border-[rgba(255,255,255,0.06)] bg-[#0f0f1c]/90 px-3 py-1.5 text-sm font-medium text-[#c4c4d4] backdrop-blur-[20px] transition duration-150 ease-out hover:bg-[#16162a] focus:outline-none focus-visible:ring-2 focus-visible:ring-[rgba(124,58,237,0.35)]"
             aria-label="Close preview"
           >
             x
@@ -79,7 +79,7 @@ function ImagePreviewModalInner({
           key={fallback.scene_number}
           src={fallback.imageUrl}
           alt={`Scene ${fallback.scene_number}`}
-          className="max-h-[85vh] w-full rounded-xl object-contain transition-opacity duration-300"
+          className="max-h-[85vh] w-full rounded-xl object-contain transition-opacity duration-200"
         />
 
         {total > 1 ? (
@@ -90,7 +90,7 @@ function ImagePreviewModalInner({
                 e.stopPropagation();
                 showPrev();
               }}
-              className="absolute left-2 top-1/2 z-10 flex h-11 w-11 -translate-y-1/2 items-center justify-center rounded-full bg-black/55 text-2xl font-light text-white backdrop-blur-sm transition hover:bg-black/80 focus:outline-none focus-visible:ring-2 focus-visible:ring-violet-400 sm:left-4 sm:h-12 sm:w-12"
+              className="absolute left-2 top-1/2 z-10 flex h-11 w-11 -translate-y-1/2 items-center justify-center rounded-full border border-[rgba(255,255,255,0.06)] bg-[#0f0f1c]/90 text-2xl font-light text-[#c4c4d4] backdrop-blur-[20px] transition duration-150 ease-out hover:bg-[#16162a] focus:outline-none focus-visible:ring-2 focus-visible:ring-[rgba(124,58,237,0.35)] sm:left-4 sm:h-12 sm:w-12"
               aria-label="Previous image"
             >
               ‹
@@ -101,7 +101,7 @@ function ImagePreviewModalInner({
                 e.stopPropagation();
                 showNext();
               }}
-              className="absolute right-2 top-1/2 z-10 flex h-11 w-11 -translate-y-1/2 items-center justify-center rounded-full bg-black/55 text-2xl font-light text-white backdrop-blur-sm transition hover:bg-black/80 focus:outline-none focus-visible:ring-2 focus-visible:ring-violet-400 sm:right-4 sm:h-12 sm:w-12"
+              className="absolute right-2 top-1/2 z-10 flex h-11 w-11 -translate-y-1/2 items-center justify-center rounded-full border border-[rgba(255,255,255,0.06)] bg-[#0f0f1c]/90 text-2xl font-light text-[#c4c4d4] backdrop-blur-[20px] transition duration-150 ease-out hover:bg-[#16162a] focus:outline-none focus-visible:ring-2 focus-visible:ring-[rgba(124,58,237,0.35)] sm:right-4 sm:h-12 sm:w-12"
               aria-label="Next image"
             >
               ›

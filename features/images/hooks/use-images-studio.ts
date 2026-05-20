@@ -12,6 +12,8 @@ import { mergeStudioScenes } from "@/features/studio/adapters/legacy-images";
 import { FALLBACK_STUDIO_TEMPLATES } from "../lib/fallback-templates";
 import {
   DEFAULT_VIDEO_DURATION_SECONDS,
+  MAX_SCENE_COUNT,
+  MIN_SCENE_COUNT,
   STUDIO_TEMPLATE_STORAGE_KEY,
 } from "../constants";
 import type { ProjectDetailPatch } from "@/features/studio/lib/apply-project-detail";
@@ -44,6 +46,11 @@ import {
   historyImageProjectId,
   historyProjectId,
   historyStudioProjectId,
+  isImagesGenerationComplete,
+  isVideoRenderInProgress,
+  shouldPollProjectDetail,
+  getMissingImageSceneNumbers,
+  sceneIsActivelyGenerating,
 } from "../utils";
 
 export const LAST_IMAGE_PROJECT_KEY = LAST_PROJECT_STORAGE_KEY;
@@ -57,12 +64,8 @@ export function useImagesStudio() {
   const [projectId, setProjectId] = useState<string | null>(null);
   /** Studio `projects.id` — PATCH scene metadata (from list `legacyImageProjectId` link). */
   const [studioProjectId, setStudioProjectId] = useState<string | null>(null);
-  const [templateKey, setTemplateKeyState] = useState(() => {
-    if (typeof window === "undefined") return "cinematic_trailer";
-    return (
-      localStorage.getItem(STUDIO_TEMPLATE_STORAGE_KEY) ?? "cinematic_trailer"
-    );
-  });
+  const [templateKey, setTemplateKeyState] = useState("cinematic_trailer");
+  const templateStorageHydratedRef = useRef(false);
   const [skipRenderReadinessCheck, setSkipRenderReadinessCheck] = useState(true);
   const [progress, setProgress] = useState(0);
   const [error, setError] = useState<string | null>(null);
@@ -76,6 +79,7 @@ export function useImagesStudio() {
     DEFAULT_VIDEO_DURATION_SECONDS
   );
   const [patchingScene, setPatchingScene] = useState<number | null>(null);
+  const [markingAllScenesReady, setMarkingAllScenesReady] = useState(false);
   const [slideshowIncludeNarration, setSlideshowIncludeNarration] = useState(false);
   const [slideshowIncludeMusic, setSlideshowIncludeMusic] = useState(false);
   const [slideshowVoiceId, setSlideshowVoiceId] = useState(
@@ -126,7 +130,9 @@ export function useImagesStudio() {
   const applyTemplateDefaults = useCallback(
     (t: (typeof templates)[0]) => {
       if (t.defaultSceneCount != null && t.defaultSceneCount > 0) {
-        setSceneCount(Math.min(20, Math.max(1, t.defaultSceneCount)));
+        setSceneCount(
+          Math.min(MAX_SCENE_COUNT, Math.max(MIN_SCENE_COUNT, t.defaultSceneCount))
+        );
       }
       if (t.defaultDurationSec != null && t.defaultDurationSec > 0) {
         setSlideshowVideoDuration(
@@ -151,6 +157,21 @@ export function useImagesStudio() {
     [templates, applyTemplateDefaults]
   );
 
+  /** Restore saved template after mount — avoids SSR/client localStorage mismatch. */
+  useEffect(() => {
+    if (templateStorageHydratedRef.current) return;
+    templateStorageHydratedRef.current = true;
+    try {
+      const saved = localStorage.getItem(STUDIO_TEMPLATE_STORAGE_KEY);
+      if (!saved) return;
+      setTemplateKeyState(saved);
+      const t = templates.find((x) => x.key === saved);
+      if (t) applyTemplateDefaults(t);
+    } catch {
+      /* ignore */
+    }
+  }, [templates, applyTemplateDefaults]);
+
   const scrollAreaRef = useRef<HTMLDivElement | null>(null);
   const prevUrlCountRef = useRef(0);
   const progressRef = useRef(0);
@@ -159,13 +180,31 @@ export function useImagesStudio() {
   const applyProjectPatch = useCallback(
     (patch: ProjectDetailPatch) => {
       applyScenePatch(patch);
-      if (patch.progress != null) {
-        setProgress(Math.min(100, Math.max(0, patch.progress)));
-      }
+
+      const scenesComplete =
+        Boolean(patch.scenes?.length) &&
+        patch.scenes!.every((s) => Boolean(s.imageUrl));
+      const videoReady = Boolean(patch.videoUrl);
+
       if (patch.totalCost !== undefined) setTotalCost(patch.totalCost);
       if (patch.videoUrl !== undefined) setVideoUrl(patch.videoUrl);
       if (patch.videoStatus !== undefined) setVideoStatus(patch.videoStatus);
       if (patch.videoError !== undefined) setVideoError(patch.videoError);
+
+      if (videoReady) {
+        setProgress(100);
+        setLoading(false);
+        setVideoRenderLoading(false);
+      } else if (scenesComplete) {
+        setProgress(100);
+        setLoading(false);
+      } else if (patch.progress != null) {
+        setProgress((prev) => {
+          const next = Math.min(100, Math.max(0, patch.progress!));
+          if (prev >= 100) return 100;
+          return next;
+        });
+      }
     },
     [applyScenePatch]
   );
@@ -277,12 +316,53 @@ export function useImagesStudio() {
     disconnectSocket,
   });
 
-  const shouldPollProject = useMemo(() => {
-    if (!projectId || projectFailed) return false;
-    if (progress < 100) return true;
-    const v = (videoStatus ?? "").toLowerCase();
-    return v === "queued" || v === "processing";
-  }, [projectId, projectFailed, progress, videoStatus]);
+  const imagesGenerationComplete = useMemo(
+    () =>
+      isImagesGenerationComplete({
+        projectId,
+        projectFailed,
+        progress,
+        videoUrl,
+        scenes,
+        sortedImages,
+        sceneCount,
+      }),
+    [
+      projectId,
+      projectFailed,
+      progress,
+      videoUrl,
+      scenes,
+      sortedImages,
+      sceneCount,
+    ]
+  );
+
+  const videoRenderInProgress = useMemo(
+    () =>
+      isVideoRenderInProgress({
+        videoUrl,
+        videoStatus,
+        videoRenderLoading,
+      }),
+    [videoUrl, videoStatus, videoRenderLoading]
+  );
+
+  const shouldPollProject = useMemo(
+    () =>
+      shouldPollProjectDetail({
+        projectId,
+        projectFailed,
+        imagesGenerationComplete,
+        videoRenderInProgress,
+      }),
+    [
+      projectId,
+      projectFailed,
+      imagesGenerationComplete,
+      videoRenderInProgress,
+    ]
+  );
 
   useProjectPoll({
     projectId,
@@ -298,14 +378,45 @@ export function useImagesStudio() {
   });
 
   useEffect(() => {
-    if (!projectId || sceneCount <= 0 || progress >= 100 || projectFailed) return;
-    if (
-      scenes.length >= sceneCount &&
-      scenes.every((s) => Boolean(s.imageUrl))
-    ) {
+    if (!projectId || progress >= 100 || projectFailed) return;
+
+    if (videoUrl) {
       setProgress(100);
+      setLoading(false);
+      return;
     }
-  }, [projectId, sceneCount, scenes, progress, projectFailed]);
+
+    if (scenes.length > 0 && scenes.every((s) => Boolean(s.imageUrl))) {
+      setProgress(100);
+      setLoading(false);
+      return;
+    }
+
+    const withUrl = sortedImages.filter((i) => Boolean(i.imageUrl)).length;
+    const stillProcessing =
+      sortedImages.some(sceneIsActivelyGenerating) ||
+      scenes.some(sceneIsActivelyGenerating);
+
+    if (withUrl > 0 && !stillProcessing) {
+      setProgress(100);
+      setLoading(false);
+      return;
+    }
+
+    const expected = Math.max(sceneCount, sortedImages.length, scenes.length);
+    if (expected > 0 && withUrl >= expected) {
+      setProgress(100);
+      setLoading(false);
+    }
+  }, [
+    projectId,
+    sceneCount,
+    scenes,
+    sortedImages,
+    progress,
+    projectFailed,
+    videoUrl,
+  ]);
 
   const handleLogout = useCallback(() => {
     try {
@@ -428,6 +539,68 @@ export function useImagesStudio() {
     },
     [studioProjectId, setScenes]
   );
+
+  const handleMarkAllScenesReady = useCallback(async () => {
+    if (!studioProjectId) {
+      setError("Studio project not linked — cannot edit scene metadata.");
+      return;
+    }
+
+    const eligible = scenes.filter((s) => Boolean(s.imageUrl));
+    const toUpdate = eligible.filter(
+      (s) => (s.renderReadiness ?? "not_ready") !== "ready"
+    );
+    if (toUpdate.length === 0) return;
+
+    setMarkingAllScenesReady(true);
+    setError(null);
+    const headers = getStudioAuthHeaders();
+    const patch = { renderReadiness: "ready", approvalStatus: "approved" };
+
+    try {
+      const results = await Promise.all(
+        toUpdate.map(async (scene) => {
+          try {
+            const { res } = await patchProjectScene({
+              projectId: studioProjectId,
+              sceneNumber: scene.sequence,
+              patch,
+              headers,
+            });
+            return { sequence: scene.sequence, ok: res.ok };
+          } catch {
+            return { sequence: scene.sequence, ok: false };
+          }
+        })
+      );
+
+      const updated = new Set(
+        results.filter((r) => r.ok).map((r) => r.sequence)
+      );
+      if (updated.size > 0) {
+        setScenes((prev) =>
+          prev.map((s) =>
+            updated.has(s.sequence)
+              ? { ...s, renderReadiness: "ready", approvalStatus: "approved" }
+              : s
+          )
+        );
+      }
+
+      const failed = results.length - updated.size;
+      if (failed > 0) {
+        setError(
+          updated.size > 0
+            ? `${failed} scene(s) could not be updated. Try again.`
+            : "Could not update scenes. Try again."
+        );
+      }
+    } catch (err) {
+      setError(getApiErrorMessage(err, "Could not update scenes."));
+    } finally {
+      setMarkingAllScenesReady(false);
+    }
+  }, [studioProjectId, scenes, setScenes]);
 
   const toggleHistoryFavorite = useCallback(
     async (e: MouseEvent, id: string, wasFavorite: boolean) => {
@@ -650,20 +823,37 @@ export function useImagesStudio() {
 
   const canCreateSlideshow = useMemo(() => {
     if (!projectId || projectFailed) return false;
-    if (!scenes.some((s) => Boolean(s.imageUrl))) return false;
+
+    const hasAnyImage =
+      sortedImages.some((i) => Boolean(i.imageUrl)) ||
+      scenes.some((s) => Boolean(s.imageUrl));
+    if (!hasAnyImage) return false;
+
     const v = (videoStatus ?? "").toLowerCase();
     if (v === "queued" || v === "processing") return false;
     if (videoUrl) return false;
     if (videoRenderLoading) return false;
+
+    const stillProcessing =
+      sortedImages.some(sceneIsActivelyGenerating) ||
+      scenes.some(sceneIsActivelyGenerating);
+    if (stillProcessing) return false;
+
     return true;
   }, [
     projectId,
     projectFailed,
     scenes,
+    sortedImages,
     videoStatus,
     videoUrl,
     videoRenderLoading,
   ]);
+
+  const missingSceneNumbers = useMemo(
+    () => getMissingImageSceneNumbers(sortedImages, sceneCount),
+    [sortedImages, sceneCount]
+  );
 
   const handleCreateSlideshowVideo = useCallback(async () => {
     if (!projectId) return;
@@ -716,7 +906,26 @@ export function useImagesStudio() {
         setError(msg);
         return;
       }
-      setVideoStatus("queued");
+      if (res.ok && data && typeof data === "object") {
+        const patch =
+          "videoUrl" in data || "videoStatus" in data
+            ? {
+                videoUrl:
+                  typeof (data as { videoUrl?: unknown }).videoUrl === "string"
+                    ? (data as { videoUrl: string }).videoUrl
+                    : null,
+                videoStatus:
+                  typeof (data as { videoStatus?: unknown }).videoStatus ===
+                  "string"
+                    ? (data as { videoStatus: string }).videoStatus
+                    : "queued",
+              }
+            : null;
+        if (patch) applyProjectPatch(patch);
+        else setVideoStatus("queued");
+      } else {
+        setVideoStatus("queued");
+      }
     } catch (err) {
       setError(getApiErrorMessage(err, "Could not start video render."));
     } finally {
@@ -731,29 +940,26 @@ export function useImagesStudio() {
     slideshowVoiceId,
     skipRenderReadinessCheck,
     scenes,
+    applyProjectPatch,
   ]);
 
   const showLoader = Boolean(
-    loading || (projectId !== null && progress < 100 && !projectFailed)
+    loading ||
+      (projectId !== null && !projectFailed && !imagesGenerationComplete)
   );
+
+  const isGeneratingImages = showLoader && !videoUrl && !videoRenderInProgress;
 
   const handleRetryGeneration = useCallback(() => {
     setError(null);
     void handleGenerate();
   }, [handleGenerate]);
 
-  const setCustomSceneCount = useCallback((value: string) => {
-    const v = parseInt(value, 10);
-    if (Number.isNaN(v)) return;
-    setSceneCount(Math.max(1, Math.min(20, v)));
-  }, []);
-
   return {
     prompt,
     setPrompt,
     sceneCount,
     setSceneCount,
-    setCustomSceneCount,
     projectId,
     studioProjectId,
     templates,
@@ -766,7 +972,9 @@ export function useImagesStudio() {
     skipRenderReadinessCheck,
     setSkipRenderReadinessCheck,
     patchingScene,
+    markingAllScenesReady,
     handlePatchScene,
+    handleMarkAllScenesReady,
     storyboardId,
     scenes,
     slideshowVideoDuration,
@@ -781,6 +989,8 @@ export function useImagesStudio() {
     videoError,
     videoRenderLoading,
     canCreateSlideshow,
+    missingSceneNumbers,
+    imagesGenerationComplete,
     slideshowIncludeNarration,
     setSlideshowIncludeNarration,
     slideshowIncludeMusic,
@@ -798,6 +1008,8 @@ export function useImagesStudio() {
     sortedImages,
     scrollAreaRef,
     showLoader,
+    isGeneratingImages,
+    videoRenderInProgress,
     previewIdx,
     previewItem,
     viewableImages,

@@ -20,7 +20,7 @@ export function useLoginForm() {
     try {
       const { data } = await signIn({ email, password });
       persistAuthSession(data);
-      router.push("/dashboard");
+      router.push("/images");
     } catch (err) {
       if (err instanceof Error && err.message.startsWith("Could not save session")) {
         setError(err.message);

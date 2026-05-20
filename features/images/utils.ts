@@ -88,6 +88,148 @@ export function readProgress(data: unknown): number | null {
   return Math.min(100, Math.max(0, p));
 }
 
+export function sceneIsActivelyGenerating(scene: {
+  imageUrl?: string | null;
+  status?: string;
+}): boolean {
+  if (scene.imageUrl) return false;
+  return (scene.status ?? "").toLowerCase() === "processing";
+}
+
+export function sceneIsWaitingForImage(scene: {
+  imageUrl?: string | null;
+  status?: string;
+}): boolean {
+  if (scene.imageUrl) return false;
+  const s = (scene.status ?? "").toLowerCase();
+  if (s === "failed" || s === "cancelled") return false;
+  return s === "pending" || s === "processing" || s === "";
+}
+
+export function getMissingImageSceneNumbers(
+  sortedImages: SceneImage[],
+  sceneCount: number
+): number[] {
+  const expected = Math.max(
+    sceneCount,
+    sortedImages.length > 0
+      ? Math.max(...sortedImages.map((i) => i.scene_number))
+      : 0
+  );
+  if (expected <= 0) return [];
+
+  const missing: number[] = [];
+  for (let n = 1; n <= expected; n++) {
+    const row = sortedImages.find((i) => i.scene_number === n);
+    if (!row?.imageUrl) missing.push(n);
+  }
+  return missing;
+}
+
+/** True when image generation is done — even if API progress is stale. */
+export function isImagesGenerationComplete(args: {
+  projectId: string | null;
+  projectFailed: boolean;
+  progress: number;
+  videoUrl: string | null;
+  scenes: StudioScene[];
+  sortedImages: SceneImage[];
+  sceneCount: number;
+}): boolean {
+  const {
+    projectId,
+    projectFailed,
+    progress,
+    videoUrl,
+    scenes,
+    sortedImages,
+    sceneCount,
+  } = args;
+
+  if (!projectId || projectFailed) return true;
+  if (progress >= 100) return true;
+  if (videoUrl) return true;
+
+  const withUrl = sortedImages.filter((i) => Boolean(i.imageUrl));
+  if (withUrl.length === 0) return false;
+
+  const processing =
+    sortedImages.some(sceneIsActivelyGenerating) ||
+    scenes.some(sceneIsActivelyGenerating);
+  if (!processing) return true;
+
+  if (scenes.length > 0 && scenes.every((s) => Boolean(s.imageUrl))) {
+    return true;
+  }
+
+  const expected = Math.max(sceneCount, sortedImages.length, scenes.length);
+  if (expected > 0 && withUrl.length >= expected) return true;
+
+  return false;
+}
+
+export function getRenderUnavailableReason(args: {
+  projectId: string | null;
+  projectFailed: boolean;
+  hasImages: boolean;
+  videoDone: boolean;
+  videoRenderInProgress: boolean;
+  imagesGenerationComplete: boolean;
+  missingSceneNumbers: number[];
+}): string | null {
+  const {
+    projectId,
+    projectFailed,
+    hasImages,
+    videoDone,
+    videoRenderInProgress,
+    imagesGenerationComplete,
+    missingSceneNumbers,
+  } = args;
+
+  if (!projectId) return "Open or create a project first.";
+  if (projectFailed) return "This project failed. Generate again to continue.";
+  if (videoDone) return "Video already rendered. Download it from the preview panel.";
+  if (videoRenderInProgress) return "A video render is already in progress.";
+  if (!hasImages) return "Generate scene images before rendering a video.";
+  if (!imagesGenerationComplete) {
+    return "Scenes are still generating. Wait for them to finish, or retry generation.";
+  }
+  if (missingSceneNumbers.length > 0) {
+    return `Scene${missingSceneNumbers.length > 1 ? "s" : ""} ${missingSceneNumbers.join(", ")} ${missingSceneNumbers.length > 1 ? "are" : "is"} missing images. Turn on "Include all scenes" to render with the scenes you have.`;
+  }
+  return null;
+}
+
+export function isVideoRenderInProgress(args: {
+  videoUrl: string | null;
+  videoStatus: string | null;
+  videoRenderLoading: boolean;
+}): boolean {
+  if (args.videoUrl) return false;
+  if (args.videoRenderLoading) return true;
+  const s = (args.videoStatus ?? "").toLowerCase();
+  return s === "queued" || s === "processing";
+}
+
+/** Whether the project detail endpoint should be polled on an interval. */
+export function shouldPollProjectDetail(args: {
+  projectId: string | null;
+  projectFailed: boolean;
+  imagesGenerationComplete: boolean;
+  videoRenderInProgress: boolean;
+}): boolean {
+  const {
+    projectId,
+    projectFailed,
+    imagesGenerationComplete,
+    videoRenderInProgress,
+  } = args;
+  if (!projectId || projectFailed) return false;
+  if (!imagesGenerationComplete) return true;
+  return videoRenderInProgress;
+}
+
 export function readTotalCost(data: unknown): number | null {
   if (!data || typeof data !== "object") return null;
   const d = data as Record<string, unknown>;
