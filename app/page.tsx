@@ -24,7 +24,7 @@ export default function Home() {
                 Video
               </p>
               <p className="mt-0.5 text-[10px] font-medium tracking-[0.14em] text-zinc-500">
-                AI Cinematic Studio
+                Prompt-to-Video Studio
               </p>
             </div>
           </div>
@@ -42,7 +42,7 @@ export default function Home() {
               className="h-1.5 w-1.5 rounded-full bg-cyan-400 shadow-[0_0_12px_rgb(34_211_238/0.8)]"
               aria-hidden
             />
-            Cinematic AI studio
+            Cinematic prompt-to-video
           </p>
 
           <h1 className="studio-fade-in-delay max-w-4xl text-balance text-4xl font-semibold leading-[1.08] tracking-tight sm:text-[2.75rem] sm:leading-[1.06] lg:text-[4.25rem] lg:leading-[1.04] xl:text-[5.25rem]">
@@ -52,9 +52,9 @@ export default function Home() {
           </h1>
 
           <p className="studio-fade-in-delay mx-auto mt-5 max-w-xl text-pretty text-base leading-relaxed text-zinc-400 sm:text-[1.0625rem]">
-            An AI cinematic studio that turns your prompts into polished
-            videos—generate scene images, preview storyboards, and render in one
-            place.
+            Lene Video turns a text prompt into a cinematic short—choose a
+            template, generate scene images, preview your storyboard, and render
+            up to 90 seconds of video in Image Studio.
           </p>
 
           <p className="studio-fade-in-delay mt-3 font-mono text-[11px] font-medium uppercase tracking-[0.28em] text-zinc-500 sm:text-xs">
@@ -62,7 +62,11 @@ export default function Home() {
             <span className="mx-2.5 text-violet-500/35" aria-hidden>
               ·
             </span>
-            Storyboard
+            Template
+            <span className="mx-2.5 text-violet-500/35" aria-hidden>
+              ·
+            </span>
+            Scenes
             <span className="mx-2.5 text-violet-500/35" aria-hidden>
               ·
             </span>
@@ -99,17 +103,17 @@ export default function Home() {
               {
                 k: "01",
                 t: "Describe",
-                d: "Write mood, lighting, and motion in natural language.",
+                d: "Write your vision in plain language—setting, mood, lighting, and motion.",
               },
               {
                 k: "02",
                 t: "Generate",
-                d: "AI builds each scene with live progress in the studio.",
+                d: "Pick a cinematic template and scene count. AI builds each frame with live progress.",
               },
               {
                 k: "03",
                 t: "Render",
-                d: "Preview images and export your cinematic video.",
+                d: "Review the storyboard, then export a cinematic video up to 90 seconds.",
               },
             ].map((step) => (
               <div
@@ -131,8 +135,8 @@ export default function Home() {
         </main>
 
         <footer className="mt-6 shrink-0 pt-4 text-center text-[11px] text-zinc-600 lg:mt-auto lg:pt-2">
-          Lene Video · Cinematic image studio ·{" "}
-          <span className="text-zinc-500">Sign in to connect to your API</span>
+          Lene Video · Prompt to cinematic video ·{" "}
+          <span className="text-zinc-500">Sign in to open Image Studio</span>
         </footer>
       </PageShell>
     </LenePageShell>

@@ -159,7 +159,7 @@ export default function LoginPage() {
                 Video
               </p>
               <p className="text-[10px] font-medium tracking-[0.12em] text-zinc-500">
-                AI Cinematic Studio
+                Prompt-to-Video Studio
               </p>
             </div>
           </div>
@@ -167,42 +167,46 @@ export default function LoginPage() {
           <div className="relative">
             <p className="mb-2.5 inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.04] px-2.5 py-0.5 text-[10px] font-medium uppercase tracking-[0.2em] text-zinc-400 backdrop-blur-md">
               <SparklesIcon className="h-3 w-3 text-violet-400" />
-              Prompt-to-video platform
+              Cinematic prompt-to-video
             </p>
             <h2 className="max-w-lg text-balance text-[1.875rem] font-semibold leading-[1.12] tracking-tight text-white xl:text-[2.125rem]">
               <span className="studio-gradient-title">Describe a scene.</span>{" "}
               <span className="studio-gradient-accent">Watch it render.</span>
             </h2>
             <p className="mt-3 max-w-md text-pretty text-sm leading-relaxed text-zinc-400">
-              Turn text prompts into cinematic videos—generate scene images,
-              preview your storyboard, and render without leaving the studio.
+              Write a prompt, pick a cinematic template, generate scene images,
+              and render a short video—all in Image Studio after you sign in.
             </p>
             <p className="mt-3 font-mono text-[10px] font-medium uppercase tracking-[0.24em] text-zinc-500">
               Prompt
               <span className="mx-2 text-violet-500/35" aria-hidden>
                 ·
               </span>
-              Create Scenes
+              Template
               <span className="mx-2 text-violet-500/35" aria-hidden>
                 ·
               </span>
-              Export Video
+              Scenes
+              <span className="mx-2 text-violet-500/35" aria-hidden>
+                ·
+              </span>
+              Render
             </p>
           </div>
 
           <ul className="relative space-y-2">
             {[
               {
-                title: "Scene generation",
-                body: "AI paints each frame with live progress and storyboard previews.",
+                title: "Scene images",
+                body: "AI generates each frame with live progress and a storyboard preview.",
               },
               {
-                title: "Secure sign-in",
-                body: "JWT-backed auth—same session your API already trusts.",
+                title: "Cinematic templates",
+                body: "Choose a visual style before you generate—mood, palette, and look locked in.",
               },
               {
-                title: "Cinematic studio",
-                body: "Land in Image Studio after login—generate, render, and preview.",
+                title: "Video render",
+                body: "Review scenes, then export a cinematic clip up to 90 seconds.",
               },
             ].map((item) => (
               <li
@@ -228,7 +232,7 @@ export default function LoginPage() {
                 90s
               </p>
               <p className="text-[10px] uppercase tracking-wider">
-                Max clip length
+                Max video length
               </p>
             </div>
             <div className="h-8 w-px bg-white/10" aria-hidden />
@@ -236,7 +240,9 @@ export default function LoginPage() {
               <p className="text-xl font-semibold tracking-tight text-white">
                 Live
               </p>
-              <p className="text-[10px] uppercase tracking-wider">Job status</p>
+              <p className="text-[10px] uppercase tracking-wider">
+                Generation status
+              </p>
             </div>
           </div>
         </aside>
@@ -258,7 +264,7 @@ export default function LoginPage() {
               </p>
               <p className="text-sm font-semibold text-zinc-100">Video</p>
               <p className="text-[10px] font-medium tracking-[0.12em] text-zinc-500">
-                AI Cinematic Studio
+                Prompt-to-Video Studio
               </p>
             </div>
           </div>
@@ -294,11 +300,11 @@ export default function LoginPage() {
                         </span>
                       </h1>
                       <p className="mt-1.5 max-w-sm text-pretty text-xs leading-relaxed text-zinc-400 sm:text-[13px]">
-                        Sign in to open Image Studio—create scenes, track
-                        generation, and render your cinematic video.
+                        Sign in to Image Studio—write a prompt, generate scene
+                        images, and render your cinematic video.
                       </p>
                       <p className="mt-2 font-mono text-[9px] font-medium uppercase tracking-[0.22em] text-zinc-600 lg:hidden">
-                        Prompt · Create Scenes · Export Video
+                        Prompt · Template · Scenes · Render
                       </p>
                     </div>
                     <span
@@ -310,7 +316,7 @@ export default function LoginPage() {
                   </div>
 
                   <div className="mb-4 flex flex-wrap gap-1.5">
-                    {["Scenes → video", "AI-generated", "JWT session"].map((tag) => (
+                    {["Prompt → video", "Cinematic templates", "Live progress"].map((tag) => (
                       <span
                         key={tag}
                         className="inline-flex items-center gap-1 rounded-full border border-white/[0.07] bg-white/[0.03] px-2 py-0.5 text-[10px] font-medium text-zinc-400"
@@ -427,8 +433,7 @@ export default function LoginPage() {
             </div>
 
             <p className="mt-4 text-center text-[10px] leading-relaxed text-zinc-600 lg:mt-3">
-              Encrypted sign-in to your API · Use a modern browser for video
-              playback
+              Secure sign-in · Video playback works best in a modern browser
             </p>
           </div>
         </main>
