@@ -13,7 +13,7 @@ export function LenePageShell({ children, className }: LenePageShellProps) {
   return (
     <div
       className={cn(
-        "studio-page font-sans relative min-h-screen overflow-hidden text-[#e8eeff]",
+        "studio-page font-sans relative h-dvh min-h-dvh overflow-hidden text-[#e8eeff]",
         className
       )}
       style={{
@@ -23,6 +23,12 @@ export function LenePageShell({ children, className }: LenePageShellProps) {
     >
       <CinematicBackdrop />
       <StudioAmbientField />
+      <div className="studio-hero-anchors" aria-hidden>
+        <div className="studio-hero-anchors__glow" />
+        <div className="studio-hero-anchors__cluster studio-hero-anchors__cluster--a" />
+        <div className="studio-hero-anchors__cluster studio-hero-anchors__cluster--b" />
+        <div className="studio-hero-anchors__cluster studio-hero-anchors__cluster--c" />
+      </div>
       <div className="studio-orb studio-orb--violet" aria-hidden />
       <div className="studio-orb studio-orb--cyan" aria-hidden />
       <div className="studio-orb studio-orb--rose" aria-hidden />
@@ -36,7 +42,7 @@ export function LenePageShell({ children, className }: LenePageShellProps) {
           `,
         }}
       />
-      <div className="relative z-10">{children}</div>
+      <div className="relative z-10 h-full min-h-0">{children}</div>
     </div>
   );
 }

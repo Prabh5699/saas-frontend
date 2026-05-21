@@ -7,8 +7,8 @@ import Link from "next/link";
 export default function Home() {
   return (
     <LenePageShell>
-      <PageShell className="flex min-h-screen max-w-5xl flex-col pb-16 pt-8">
-        <header className="mb-16 flex items-center justify-between sm:mb-24">
+      <PageShell className="flex h-full min-h-0 max-w-5xl flex-col overflow-y-auto py-0 pb-6 pt-5 sm:pt-6 lg:overflow-hidden lg:pb-5">
+        <header className="mb-4 flex shrink-0 items-center justify-between sm:mb-5">
           <div className="flex items-center gap-3">
             <div className="relative">
               <div className="absolute inset-0 rounded-2xl bg-gradient-to-br from-indigo-500 via-violet-600 to-fuchsia-600 opacity-55 blur-lg" />
@@ -23,6 +23,9 @@ export default function Home() {
               <p className="text-sm font-semibold tracking-tight text-[#e8eeff]">
                 Video
               </p>
+              <p className="mt-0.5 text-[10px] font-medium tracking-[0.14em] text-zinc-500">
+                AI Cinematic Studio
+              </p>
             </div>
           </div>
           <Link
@@ -33,8 +36,8 @@ export default function Home() {
           </Link>
         </header>
 
-        <main className="flex flex-1 flex-col items-center text-center lg:justify-center">
-          <p className="studio-fade-in mb-6 inline-flex items-center gap-2 rounded-full border border-indigo-500/30 bg-indigo-500/10 px-4 py-1.5 text-[11px] font-semibold uppercase tracking-[0.2em] text-indigo-200/95">
+        <main className="flex shrink-0 flex-col items-center text-center pt-[clamp(1.25rem,6vh,3.5rem)] lg:pt-[clamp(1.75rem,8vh,4rem)]">
+          <p className="studio-fade-in mb-5 inline-flex items-center gap-2 rounded-full border border-indigo-500/30 bg-indigo-500/10 px-4 py-1.5 text-[11px] font-semibold uppercase tracking-[0.2em] text-indigo-200/95">
             <span
               className="h-1.5 w-1.5 rounded-full bg-cyan-400 shadow-[0_0_12px_rgb(34_211_238/0.8)]"
               aria-hidden
@@ -42,27 +45,40 @@ export default function Home() {
             Cinematic AI studio
           </p>
 
-          <h1 className="studio-fade-in-delay max-w-4xl text-balance text-4xl font-semibold leading-[1.08] tracking-tight sm:text-6xl sm:leading-[1.05] lg:text-7xl">
+          <h1 className="studio-fade-in-delay max-w-4xl text-balance text-4xl font-semibold leading-[1.08] tracking-tight sm:text-[2.75rem] sm:leading-[1.06] lg:text-[4.25rem] lg:leading-[1.04] xl:text-[5.25rem]">
             <span className="studio-gradient-title">Prompt it.</span>
             <br />
             <span className="studio-gradient-accent">Scene by scene.</span>
           </h1>
 
-          <p className="studio-fade-in-delay mx-auto mt-8 max-w-xl text-pretty text-base leading-relaxed text-zinc-400 sm:text-lg">
-            Describe your vision, pick a cinematic template, generate scene
-            images, and render a polished video—all in one glass studio.
+          <p className="studio-fade-in-delay mx-auto mt-5 max-w-xl text-pretty text-base leading-relaxed text-zinc-400 sm:text-[1.0625rem]">
+            An AI cinematic studio that turns your prompts into polished
+            videos—generate scene images, preview storyboards, and render in one
+            place.
           </p>
 
-          <div className="studio-fade-in-delay mt-12 flex flex-col items-stretch gap-3 sm:flex-row sm:flex-wrap sm:justify-center sm:gap-4">
+          <p className="studio-fade-in-delay mt-3 font-mono text-[11px] font-medium uppercase tracking-[0.28em] text-zinc-500 sm:text-xs">
+            Prompt
+            <span className="mx-2.5 text-violet-500/35" aria-hidden>
+              ·
+            </span>
+            Storyboard
+            <span className="mx-2.5 text-violet-500/35" aria-hidden>
+              ·
+            </span>
+            Render
+          </p>
+
+          <div className="studio-fade-in-delay mt-6 flex flex-col items-stretch gap-3 sm:flex-row sm:flex-wrap sm:justify-center sm:gap-4">
             <Link
               href="/login"
               className={cn(
                 buttonVariants({
                   variant: "primary",
-                  size: "lg",
+                  size: "md",
                   shine: false,
                 }),
-                "studio-btn-primary relative overflow-hidden rounded-2xl shadow-[0_20px_50px_-12px_rgb(99_102_241/0.55)] active:scale-[0.98]"
+                "studio-btn-primary relative overflow-hidden rounded-2xl px-7 py-3 text-sm shadow-[0_20px_50px_-12px_rgb(99_102_241/0.55)] active:scale-[0.98] sm:text-base"
               )}
             >
               <span className="relative z-10">Start creating</span>
@@ -70,15 +86,15 @@ export default function Home() {
             <Link
               href="/images"
               className={cn(
-                buttonVariants({ variant: "outline", size: "lg", shine: false }),
-                "studio-btn-ghost rounded-2xl border-white/12 bg-white/[0.04] text-zinc-200 backdrop-blur-sm"
+                buttonVariants({ variant: "outline", size: "md", shine: false }),
+                "studio-btn-ghost rounded-2xl border-white/12 bg-white/[0.04] px-7 py-3 text-sm text-zinc-200 backdrop-blur-sm sm:text-base"
               )}
             >
               Open studio
             </Link>
           </div>
 
-          <div className="studio-fade-in-delay mt-20 grid w-full max-w-3xl gap-4 sm:grid-cols-3">
+          <div className="studio-fade-in-delay mt-12 grid w-full max-w-3xl gap-3 sm:grid-cols-3 lg:mt-10">
             {[
               {
                 k: "01",
@@ -98,13 +114,15 @@ export default function Home() {
             ].map((step) => (
               <div
                 key={step.k}
-                className="studio-panel rounded-2xl border border-white/[0.08] bg-white/[0.03] p-5 text-left backdrop-blur-sm"
+                className="studio-panel rounded-2xl border border-white/[0.08] bg-white/[0.03] p-4 text-left backdrop-blur-sm sm:p-5"
               >
-                <p className="mb-2 font-mono text-[10px] text-indigo-400/90">
+                <p className="mb-1.5 font-mono text-[10px] text-indigo-400/90">
                   {step.k}
                 </p>
-                <p className="font-medium text-zinc-100">{step.t}</p>
-                <p className="mt-2 text-sm leading-relaxed text-zinc-500">
+                <p className="text-sm font-medium text-zinc-100 sm:text-base">
+                  {step.t}
+                </p>
+                <p className="mt-1.5 text-xs leading-relaxed text-zinc-500 sm:text-sm">
                   {step.d}
                 </p>
               </div>
@@ -112,7 +130,7 @@ export default function Home() {
           </div>
         </main>
 
-        <footer className="mt-auto pt-16 text-center text-[11px] text-zinc-600">
+        <footer className="mt-6 shrink-0 pt-4 text-center text-[11px] text-zinc-600 lg:mt-auto lg:pt-2">
           Lene Video · Cinematic image studio ·{" "}
           <span className="text-zinc-500">Sign in to connect to your API</span>
         </footer>

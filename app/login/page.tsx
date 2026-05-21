@@ -136,30 +136,61 @@ export default function LoginPage() {
 
   return (
     <LenePageShell>
-      <div className="mx-auto grid min-h-screen max-w-[1200px] lg:grid-cols-[minmax(0,1fr)_minmax(0,440px)]">
+      <div className="mx-auto grid min-h-dvh max-w-[1180px] lg:h-dvh lg:max-h-dvh lg:grid-cols-[minmax(0,1fr)_minmax(0,400px)] lg:overflow-hidden">
         {/* Hero — desktop */}
-        <aside className="animate-login-rise relative hidden flex-col justify-center gap-10 px-8 py-16 pl-10 pr-6 lg:flex xl:pl-14">
+        <aside className="animate-login-rise relative hidden min-h-0 flex-col justify-center gap-5 px-6 py-6 pl-8 pr-5 lg:flex xl:gap-5 xl:pl-10 xl:pr-6">
           <div
             aria-hidden
-            className="absolute left-[12%] top-[18%] h-72 w-72 rounded-full bg-violet-500/10 blur-[90px] motion-reduce:opacity-30"
+            className="absolute left-[12%] top-[14%] h-56 w-56 rounded-full bg-violet-500/10 blur-[80px] motion-reduce:opacity-30"
             style={{ animation: "pulse-ring 7s ease-in-out infinite" }}
           />
+          <div className="relative flex items-center gap-2.5">
+            <div className="relative shrink-0">
+              <div className="absolute inset-0 rounded-xl bg-gradient-to-br from-violet-500 to-fuchsia-600 opacity-50 blur-md motion-reduce:blur-none" />
+              <div className="relative flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-br from-violet-500 to-fuchsia-600 shadow-lg shadow-violet-600/25 ring-1 ring-white/15">
+                <span className="text-sm font-bold text-white">L</span>
+              </div>
+            </div>
+            <div>
+              <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-violet-300/80">
+                Lene
+              </p>
+              <p className="text-sm font-semibold leading-tight text-zinc-100">
+                Video
+              </p>
+              <p className="text-[10px] font-medium tracking-[0.12em] text-zinc-500">
+                AI Cinematic Studio
+              </p>
+            </div>
+          </div>
+
           <div className="relative">
-            <p className="mb-4 inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.04] px-3 py-1 text-[11px] font-medium uppercase tracking-[0.22em] text-zinc-400 backdrop-blur-md">
-              <SparklesIcon className="h-3.5 w-3.5 text-violet-400" />
-              Lene Video · Cinematic studio
+            <p className="mb-2.5 inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.04] px-2.5 py-0.5 text-[10px] font-medium uppercase tracking-[0.2em] text-zinc-400 backdrop-blur-md">
+              <SparklesIcon className="h-3 w-3 text-violet-400" />
+              Prompt-to-video platform
             </p>
-            <h2 className="max-w-lg text-balance text-4xl font-semibold tracking-tight text-white xl:text-[2.75rem] xl:leading-[1.08]">
+            <h2 className="max-w-lg text-balance text-[1.875rem] font-semibold leading-[1.12] tracking-tight text-white xl:text-[2.125rem]">
               <span className="studio-gradient-title">Describe a scene.</span>{" "}
               <span className="studio-gradient-accent">Watch it render.</span>
             </h2>
-            <p className="mt-5 max-w-md text-pretty text-base leading-relaxed text-zinc-400">
-              Write a prompt, pick a template, generate scene images, and
-              render your video—all in one premium studio after you sign in.
+            <p className="mt-3 max-w-md text-pretty text-sm leading-relaxed text-zinc-400">
+              Turn text prompts into cinematic videos—generate scene images,
+              preview your storyboard, and render without leaving the studio.
+            </p>
+            <p className="mt-3 font-mono text-[10px] font-medium uppercase tracking-[0.24em] text-zinc-500">
+              Prompt
+              <span className="mx-2 text-violet-500/35" aria-hidden>
+                ·
+              </span>
+              Create Scenes
+              <span className="mx-2 text-violet-500/35" aria-hidden>
+                ·
+              </span>
+              Export Video
             </p>
           </div>
 
-          <ul className="relative space-y-4">
+          <ul className="relative space-y-2">
             {[
               {
                 title: "Scene generation",
@@ -176,56 +207,63 @@ export default function LoginPage() {
             ].map((item) => (
               <li
                 key={item.title}
-                className="group flex gap-4 rounded-2xl border border-white/[0.06] bg-white/[0.02] p-4 backdrop-blur-sm transition duration-300 hover:border-violet-500/20 hover:bg-white/[0.04]"
+                className="group flex gap-3 rounded-xl border border-white/[0.06] bg-white/[0.02] p-2.5 backdrop-blur-sm transition duration-300 hover:border-violet-500/20 hover:bg-white/[0.04]"
               >
-                <span className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-violet-500/20 to-fuchsia-500/10 text-violet-300 ring-1 ring-white/10 transition group-hover:shadow-lg group-hover:shadow-violet-500/15">
-                  <ShieldIcon className="h-4 w-4" />
+                <span className="mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-violet-500/20 to-fuchsia-500/10 text-violet-300 ring-1 ring-white/10 transition group-hover:shadow-lg group-hover:shadow-violet-500/15">
+                  <ShieldIcon className="h-3.5 w-3.5" />
                 </span>
-                <div>
-                  <p className="font-medium text-zinc-100">{item.title}</p>
-                  <p className="mt-0.5 text-sm text-zinc-500">{item.body}</p>
+                <div className="min-w-0">
+                  <p className="text-sm font-medium text-zinc-100">{item.title}</p>
+                  <p className="mt-0.5 text-xs leading-snug text-zinc-500">
+                    {item.body}
+                  </p>
                 </div>
               </li>
             ))}
           </ul>
 
-          <div className="flex flex-wrap gap-6 border-t border-white/[0.06] pt-8 text-sm text-zinc-500">
+          <div className="flex flex-wrap gap-5 border-t border-white/[0.06] pt-4 text-sm text-zinc-500">
             <div>
-              <p className="text-2xl font-semibold tracking-tight text-white">
+              <p className="text-xl font-semibold tracking-tight text-white">
                 90s
               </p>
-              <p className="text-xs uppercase tracking-wider">Max clip length</p>
+              <p className="text-[10px] uppercase tracking-wider">
+                Max clip length
+              </p>
             </div>
-            <div className="h-10 w-px bg-white/10" aria-hidden />
+            <div className="h-8 w-px bg-white/10" aria-hidden />
             <div>
-              <p className="text-2xl font-semibold tracking-tight text-white">
+              <p className="text-xl font-semibold tracking-tight text-white">
                 Live
               </p>
-              <p className="text-xs uppercase tracking-wider">Job status</p>
+              <p className="text-[10px] uppercase tracking-wider">Job status</p>
             </div>
           </div>
         </aside>
 
         {/* Form column */}
-        <main className="flex flex-col items-center justify-center px-4 py-12 sm:px-6 lg:px-4 lg:py-16">
-          <div className="animate-login-rise-delay-1 mb-10 flex w-full max-w-[420px] items-center gap-3 lg:max-w-none lg:justify-start">
+        <main className="flex min-h-dvh flex-col items-center justify-center px-4 py-8 sm:px-6 lg:min-h-0 lg:max-h-dvh lg:overflow-hidden lg:px-4 lg:py-5">
+          <div className="animate-login-rise-delay-1 mb-8 flex w-full max-w-[400px] items-center gap-3 lg:hidden">
             <div className="relative">
               <div className="absolute inset-0 rounded-2xl bg-gradient-to-br from-violet-500 to-fuchsia-600 opacity-60 blur-lg motion-reduce:blur-none" />
-              <div className="relative flex h-12 w-12 items-center justify-center rounded-2xl bg-gradient-to-br from-violet-500 to-fuchsia-600 shadow-xl shadow-violet-600/30 ring-1 ring-white/15">
-                <span className="text-lg font-bold tracking-tight text-white">
+              <div className="relative flex h-11 w-11 items-center justify-center rounded-2xl bg-gradient-to-br from-violet-500 to-fuchsia-600 shadow-xl shadow-violet-600/30 ring-1 ring-white/15">
+                <span className="text-base font-bold tracking-tight text-white">
                   L
                 </span>
               </div>
             </div>
             <div className="text-left">
-              <p className="text-[11px] font-medium uppercase tracking-[0.2em] text-zinc-500">
+              <p className="text-[10px] font-medium uppercase tracking-[0.2em] text-zinc-500">
                 Lene
               </p>
               <p className="text-sm font-semibold text-zinc-100">Video</p>
+              <p className="text-[10px] font-medium tracking-[0.12em] text-zinc-500">
+                AI Cinematic Studio
+              </p>
             </div>
           </div>
 
-          <div className="animate-login-rise-delay-2 w-full max-w-[420px]">
+          <div className="animate-login-rise-delay-2 w-full max-w-[400px]">
             {/* Rotating gradient ring */}
             <div className="relative">
               <div
@@ -242,37 +280,40 @@ export default function LoginPage() {
                 />
               </div>
 
-              <div className="studio-panel relative overflow-hidden rounded-[1.3rem] border border-white/[0.09] bg-zinc-950/55 shadow-[0_0_0_1px_rgb(255_255_255/0.04),0_24px_80px_-12px_rgb(0_0_0/0.65)] backdrop-blur-2xl">
+              <div className="studio-panel relative overflow-hidden rounded-[1.2rem] border border-white/[0.09] bg-zinc-950/55 shadow-[0_0_0_1px_rgb(255_255_255/0.04),0_24px_80px_-12px_rgb(0_0_0/0.65)] backdrop-blur-2xl">
                 <div
                   className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-violet-400/45 to-transparent"
                   aria-hidden
                 />
-                <div className="relative px-8 py-10 sm:px-10">
-                  <div className="mb-8 flex items-start justify-between gap-4">
+                <div className="relative px-6 py-6 sm:px-7 lg:px-6 lg:py-5">
+                  <div className="mb-4 flex items-start justify-between gap-3">
                     <div>
-                      <h1 className="text-balance text-2xl font-semibold tracking-tight sm:text-[1.7rem]">
+                      <h1 className="text-balance text-xl font-semibold tracking-tight sm:text-[1.45rem]">
                         <span className="bg-gradient-to-b from-white to-zinc-300 bg-clip-text text-transparent">
                           Welcome back
                         </span>
                       </h1>
-                      <p className="mt-2 max-w-sm text-pretty text-sm leading-relaxed text-zinc-400">
+                      <p className="mt-1.5 max-w-sm text-pretty text-xs leading-relaxed text-zinc-400 sm:text-[13px]">
                         Sign in to open Image Studio—create scenes, track
                         generation, and render your cinematic video.
                       </p>
+                      <p className="mt-2 font-mono text-[9px] font-medium uppercase tracking-[0.22em] text-zinc-600 lg:hidden">
+                        Prompt · Create Scenes · Export Video
+                      </p>
                     </div>
                     <span
-                      className="hidden shrink-0 rounded-full border border-white/10 bg-white/[0.04] px-2.5 py-1 text-[10px] font-medium uppercase tracking-wider text-zinc-500 sm:inline"
+                      className="hidden shrink-0 rounded-full border border-white/10 bg-white/[0.04] px-2 py-0.5 text-[10px] font-medium uppercase tracking-wider text-zinc-500 sm:inline"
                       title="Product"
                     >
                       Lene
                     </span>
                   </div>
 
-                  <div className="mb-8 flex flex-wrap gap-2">
+                  <div className="mb-4 flex flex-wrap gap-1.5">
                     {["Scenes → video", "AI-generated", "JWT session"].map((tag) => (
                       <span
                         key={tag}
-                        className="inline-flex items-center gap-1.5 rounded-full border border-white/[0.07] bg-white/[0.03] px-2.5 py-1 text-[11px] font-medium text-zinc-400"
+                        className="inline-flex items-center gap-1 rounded-full border border-white/[0.07] bg-white/[0.03] px-2 py-0.5 text-[10px] font-medium text-zinc-400"
                       >
                         <span className="h-1 w-1 rounded-full bg-emerald-400/90 shadow-[0_0_8px_rgb(52_211_153/0.65)]" />
                         {tag}
@@ -280,16 +321,16 @@ export default function LoginPage() {
                     ))}
                   </div>
 
-                  <form className="space-y-5" onSubmit={handleLogin} noValidate>
-                    <div className="space-y-2">
+                  <form className="space-y-3.5" onSubmit={handleLogin} noValidate>
+                    <div className="space-y-1.5">
                       <label
                         htmlFor="email"
-                        className="block text-[11px] font-semibold uppercase tracking-[0.18em] text-zinc-500"
+                        className="block text-[10px] font-semibold uppercase tracking-[0.16em] text-zinc-500"
                       >
                         Email
                       </label>
                       <div className="group relative">
-                        <MailIcon className="pointer-events-none absolute left-3.5 top-1/2 h-[18px] w-[18px] -translate-y-1/2 text-zinc-500 transition group-focus-within:text-violet-400" />
+                        <MailIcon className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-zinc-500 transition group-focus-within:text-violet-400" />
                         <input
                           id="email"
                           name="email"
@@ -297,30 +338,30 @@ export default function LoginPage() {
                           autoComplete="email"
                           required
                           placeholder="you@company.com"
-                          className="w-full rounded-xl border border-white/[0.09] bg-zinc-900/50 py-3 pl-11 pr-3 text-sm text-zinc-100 outline-none ring-0 transition placeholder:text-zinc-600 focus:border-violet-500/45 focus:bg-zinc-900/70 focus:shadow-[0_0_0_3px_rgb(139_92_246/0.12)]"
+                          className="w-full rounded-xl border border-white/[0.09] bg-zinc-900/50 py-2.5 pl-10 pr-3 text-sm text-zinc-100 outline-none ring-0 transition placeholder:text-zinc-600 focus:border-violet-500/45 focus:bg-zinc-900/70 focus:shadow-[0_0_0_3px_rgb(139_92_246/0.12)]"
                           value={email}
                           onChange={(e) => setEmail(e.target.value)}
                         />
                       </div>
                     </div>
 
-                    <div className="space-y-2">
+                    <div className="space-y-1.5">
                       <div className="flex items-center justify-between gap-2">
                         <label
                           htmlFor="password"
-                          className="block text-[11px] font-semibold uppercase tracking-[0.18em] text-zinc-500"
+                          className="block text-[10px] font-semibold uppercase tracking-[0.16em] text-zinc-500"
                         >
                           Password
                         </label>
                         <a
                           href="#"
-                          className="text-xs font-medium text-violet-400/95 transition hover:text-violet-300"
+                          className="text-[11px] font-medium text-violet-400/95 transition hover:text-violet-300"
                         >
                           Forgot password?
                         </a>
                       </div>
                       <div className="group relative">
-                        <LockIcon className="pointer-events-none absolute left-3.5 top-1/2 h-[18px] w-[18px] -translate-y-1/2 text-zinc-500 transition group-focus-within:text-violet-400" />
+                        <LockIcon className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-zinc-500 transition group-focus-within:text-violet-400" />
                         <input
                           id="password"
                           name="password"
@@ -328,7 +369,7 @@ export default function LoginPage() {
                           autoComplete="current-password"
                           required
                           placeholder="••••••••"
-                          className="w-full rounded-xl border border-white/[0.09] bg-zinc-900/50 py-3 pl-11 pr-11 text-sm text-zinc-100 outline-none transition placeholder:text-zinc-600 focus:border-violet-500/45 focus:bg-zinc-900/70 focus:shadow-[0_0_0_3px_rgb(139_92_246/0.12)]"
+                          className="w-full rounded-xl border border-white/[0.09] bg-zinc-900/50 py-2.5 pl-10 pr-10 text-sm text-zinc-100 outline-none transition placeholder:text-zinc-600 focus:border-violet-500/45 focus:bg-zinc-900/70 focus:shadow-[0_0_0_3px_rgb(139_92_246/0.12)]"
                           value={password}
                           onChange={(e) => setPassword(e.target.value)}
                         />
@@ -363,6 +404,7 @@ export default function LoginPage() {
                       variant="heroPrimary"
                       loading={loading}
                       loadingLabel="Signing in…"
+                      className="py-2.5"
                     >
                       <>
                         Sign in
@@ -371,7 +413,7 @@ export default function LoginPage() {
                     </Button>
                   </form>
 
-                  <p className="mt-8 text-center text-sm text-zinc-500">
+                  <p className="mt-5 text-center text-xs text-zinc-500">
                     New here?{" "}
                     <Link
                       href="/signup"
@@ -384,7 +426,7 @@ export default function LoginPage() {
               </div>
             </div>
 
-            <p className="mt-8 text-center text-[11px] leading-relaxed text-zinc-600">
+            <p className="mt-4 text-center text-[10px] leading-relaxed text-zinc-600 lg:mt-3">
               Encrypted sign-in to your API · Use a modern browser for video
               playback
             </p>

@@ -153,7 +153,7 @@ function ImagesStudioShell() {
   return (
     <div className={STUDIO_PAGE_CLASS} style={studioRoot}>
       <div style={studioGlowOverlay} aria-hidden />
-      <StudioAmbientField starCount={56} meteorCount={0} />
+      <StudioAmbientField variant="subtle" />
       <div className="studio-orb studio-orb--violet" aria-hidden />
       <div className="studio-orb studio-orb--cyan" aria-hidden />
       <div className="studio-orb studio-orb--rose" aria-hidden />
