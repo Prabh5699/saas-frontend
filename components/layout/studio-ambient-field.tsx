@@ -134,24 +134,12 @@ function isTooCloseToRecent(
   );
 }
 
-/** Top-right → bottom-left lanes, head leads left. */
-function buildLanePath(): {
-  startX: number;
-  startY: number;
-  endX: number;
-  endY: number;
-  angle: number;
-} {
-  const lane = pickLane();
-  const slopeAngle = randomBetween(35, 55);
-  const travel = randomBetween(108, 142);
-  const rad = (slopeAngle * Math.PI) / 180;
-
-  const startX = randomBetween(78, 118);
-  const startY = randomBetween(lane.yMin, lane.yMax);
-  const endX = startX - Math.cos(rad) * travel;
-  const endY = startY + Math.sin(rad) * travel * 0.68;
-
+function pathFromPoints(
+  startX: number,
+  startY: number,
+  endX: number,
+  endY: number
+) {
   const dx = endX - startX;
   const dy = endY - startY;
   const angle = (Math.atan2(dy, dx) * 180) / Math.PI;
@@ -165,23 +153,63 @@ function buildLanePath(): {
   };
 }
 
+/** Paths that cut through the viewport center — visible over studio panels. */
+function buildCenterCrossingPath() {
+  const startX = randomBetween(88, 112);
+  const startY = randomBetween(-8, 12);
+  const endX = randomBetween(-18, 8);
+  const endY = randomBetween(78, 98);
+  return pathFromPoints(startX, startY, endX, endY);
+}
+
+/** Top-right → bottom-left lanes, head leads left. */
+function buildLanePath(preferCenter = false): {
+  startX: number;
+  startY: number;
+  endX: number;
+  endY: number;
+  angle: number;
+} {
+  if (preferCenter || Math.random() < 0.38) {
+    return buildCenterCrossingPath();
+  }
+
+  const lane = pickLane();
+  const slopeAngle = randomBetween(35, 55);
+  const travel = randomBetween(108, 142);
+  const rad = (slopeAngle * Math.PI) / 180;
+
+  const startX = randomBetween(78, 118);
+  const startY = randomBetween(lane.yMin, lane.yMax);
+  const endX = startX - Math.cos(rad) * travel;
+  const endY = startY + Math.sin(rad) * travel * 0.68;
+
+  return pathFromPoints(startX, startY, endX, endY);
+}
+
 function createMeteor(context: MeteorSpawnContext): Meteor | null {
   const maxAttempts = 12;
+  const avoidCardZone = context.variant !== "subtle";
+  const preferCenter = context.variant === "subtle";
 
   for (let attempt = 0; attempt < maxAttempts; attempt += 1) {
-    const { startX, startY, endX, endY, angle } = buildLanePath();
+    const { startX, startY, endX, endY, angle } = buildLanePath(preferCenter);
 
     if (isTooCloseToRecent(startX, startY, context.recentStarts)) {
       continue;
     }
 
-    if (pathCrossesCardZone(startX, startY, endX, endY) && Math.random() < 0.68) {
+    if (
+      avoidCardZone &&
+      pathCrossesCardZone(startX, startY, endX, endY) &&
+      Math.random() < 0.68
+    ) {
       continue;
     }
 
     const peakOpacity =
       context.variant === "subtle"
-        ? randomBetween(0.16, 0.28)
+        ? randomBetween(0.24, 0.42)
         : randomBetween(0.2, 0.34);
 
     return {
@@ -350,7 +378,7 @@ export function StudioAmbientField({
     setMeteors((prev) => prev.filter((meteor) => meteor.id !== id));
   }, []);
 
-  const opacityScale = variant === "subtle" ? 0.55 : 1;
+  const opacityScale = variant === "subtle" ? 0.82 : 1;
 
   const layers = useMemo<StarLayerConfig[]>(
     () =>
@@ -373,36 +401,38 @@ export function StudioAmbientField({
   if (!mounted) return null;
 
   return (
-    <div className="studio-starfield" aria-hidden>
-      {layers.map((layer) => (
-        <div
-          key={layer.id}
-          className={layer.className}
-          style={{
-            transform: `translate3d(${cursor.x * layer.parallax}px, ${cursor.y * layer.parallax}px, 0)`,
-          }}
-        >
-          {layer.stars.map((star) => (
-            <span
-              key={`${layer.id}-${star.id}`}
-              className="studio-starfield__star"
-              style={
-                {
-                  left: star.left,
-                  top: star.top,
-                  width: star.sizePx,
-                  height: star.sizePx,
-                  "--star-base-opacity": star.opacity,
-                  "--star-delay": star.delay,
-                  "--star-dur": star.duration,
-                } as CSSProperties
-              }
-            />
-          ))}
-        </div>
-      ))}
+    <>
+      <div className="studio-starfield" aria-hidden>
+        {layers.map((layer) => (
+          <div
+            key={layer.id}
+            className={layer.className}
+            style={{
+              transform: `translate3d(${cursor.x * layer.parallax}px, ${cursor.y * layer.parallax}px, 0)`,
+            }}
+          >
+            {layer.stars.map((star) => (
+              <span
+                key={`${layer.id}-${star.id}`}
+                className="studio-starfield__star"
+                style={
+                  {
+                    left: star.left,
+                    top: star.top,
+                    width: star.sizePx,
+                    height: star.sizePx,
+                    "--star-base-opacity": star.opacity,
+                    "--star-delay": star.delay,
+                    "--star-dur": star.duration,
+                  } as CSSProperties
+                }
+              />
+            ))}
+          </div>
+        ))}
+      </div>
 
-      <div className="studio-starfield__meteors">
+      <div className="studio-meteor-overlay" aria-hidden>
         {meteors.map((meteor) => (
           <span
             key={meteor.id}
@@ -426,6 +456,6 @@ export function StudioAmbientField({
           </span>
         ))}
       </div>
-    </div>
+    </>
   );
 }

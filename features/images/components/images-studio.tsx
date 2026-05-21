@@ -153,10 +153,10 @@ function ImagesStudioShell() {
   return (
     <div className={STUDIO_PAGE_CLASS} style={studioRoot}>
       <div style={studioGlowOverlay} aria-hidden />
-      <StudioAmbientField variant="subtle" />
       <div className="studio-orb studio-orb--violet" aria-hidden />
       <div className="studio-orb studio-orb--cyan" aria-hidden />
       <div className="studio-orb studio-orb--rose" aria-hidden />
+      <StudioAmbientField variant="subtle" />
 
       <div style={studioLayoutRow}>
         <div className="hidden lg:flex studio-fade-in" style={{ height: "100%" }}>
@@ -164,11 +164,9 @@ function ImagesStudioShell() {
         </div>
 
         <main
-          className="hide-scroll studio-fade-in-delay"
+          className="hide-scroll studio-fade-in-delay studio-main-panel"
           style={{
             ...glassPanel,
-            background:
-              "linear-gradient(145deg, rgba(8,12,28,0.94) 0%, rgba(6,10,26,0.9) 100%)",
             flex: 1,
             position: "relative",
             zIndex: 1,

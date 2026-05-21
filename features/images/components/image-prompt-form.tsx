@@ -144,10 +144,11 @@ function ImagePromptFormInner({
           marginBottom: 12,
           padding: "10px 12px",
           borderRadius: 10,
-          background: "rgba(6, 10, 26, 0.92)",
+          background: "rgba(6, 10, 26, 0.28)",
           border: "1px solid rgba(255, 255, 255, 0.08)",
+          backdropFilter: "blur(12px)",
+          WebkitBackdropFilter: "blur(12px)",
           position: "relative",
-          isolation: "isolate",
         }}
       >
         {PRESETS.map((n) => (

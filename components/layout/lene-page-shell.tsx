@@ -22,6 +22,9 @@ export function LenePageShell({ children, className }: LenePageShellProps) {
       }}
     >
       <CinematicBackdrop />
+      <div className="studio-orb studio-orb--violet" aria-hidden />
+      <div className="studio-orb studio-orb--cyan" aria-hidden />
+      <div className="studio-orb studio-orb--rose" aria-hidden />
       <StudioAmbientField />
       <div className="studio-hero-anchors" aria-hidden>
         <div className="studio-hero-anchors__glow" />
@@ -29,9 +32,6 @@ export function LenePageShell({ children, className }: LenePageShellProps) {
         <div className="studio-hero-anchors__cluster studio-hero-anchors__cluster--b" />
         <div className="studio-hero-anchors__cluster studio-hero-anchors__cluster--c" />
       </div>
-      <div className="studio-orb studio-orb--violet" aria-hidden />
-      <div className="studio-orb studio-orb--cyan" aria-hidden />
-      <div className="studio-orb studio-orb--rose" aria-hidden />
       <div
         aria-hidden
         className="pointer-events-none fixed inset-0 z-0"

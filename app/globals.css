@@ -1157,6 +1157,7 @@ body {
   z-index: 0;
   filter: blur(72px);
   animation: studio-orb-drift 14s ease-in-out infinite;
+  opacity: 0.72;
 }
 
 .studio-page .studio-orb--violet {
@@ -1522,7 +1523,15 @@ body {
 .studio-starfield {
   position: fixed;
   inset: 0;
-  z-index: 0;
+  z-index: 1;
+  pointer-events: none;
+  overflow: hidden;
+}
+
+.studio-meteor-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 3;
   pointer-events: none;
   overflow: hidden;
 }
@@ -1595,15 +1604,6 @@ body {
       rotate(var(--meteor-angle));
     opacity: 0;
   }
-}
-
-.studio-starfield__meteors {
-  position: absolute;
-  inset: 0;
-  z-index: 2;
-  overflow: hidden;
-  pointer-events: none;
-  opacity: 0.82;
 }
 
 .studio-starfield__meteor {
@@ -1758,6 +1758,30 @@ body {
 
 .studio-scenes-block {
   box-shadow: 0 0 0 1px rgba(99, 102, 241, 0.08);
+}
+
+.studio-main-panel {
+  background:
+    linear-gradient(
+      145deg,
+      rgba(8, 12, 28, 0.22) 0%,
+      rgba(6, 10, 26, 0.14) 45%,
+      rgba(6, 10, 26, 0.1) 100%
+    ) !important;
+  backdrop-filter: blur(10px) saturate(1.2) !important;
+  -webkit-backdrop-filter: blur(10px) saturate(1.2) !important;
+}
+
+.studio-page .studio-prompt-box {
+  background:
+    linear-gradient(
+      160deg,
+      rgba(99, 102, 241, 0.06) 0%,
+      rgba(255, 255, 255, 0.025) 40%,
+      rgba(34, 211, 238, 0.03) 100%
+    ) !important;
+  backdrop-filter: blur(8px) !important;
+  -webkit-backdrop-filter: blur(8px) !important;
 }
 
 @media (prefers-reduced-motion: reduce) {
